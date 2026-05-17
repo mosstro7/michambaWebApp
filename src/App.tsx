@@ -6,6 +6,7 @@ import { useAuthStore } from './store/authStore';
 // Pages
 import { Landing } from './pages/Landing';
 import { Login } from './pages/Login';
+import { Register } from './pages/Register';
 import { Dashboard } from './pages/Dashboard';
 import { NewOrder } from './pages/NewOrder';
 import { OrderDetail } from './pages/OrderDetail';
@@ -20,7 +21,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={isAuthenticated ? <Dashboard /> : <Landing />} />
           <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Login />} /> {/* Using login for now for MVP simplicity */}
+          <Route path="/register" element={<Register />} />
           
           <Route path="/dashboard" element={
             <ProtectedRoute>

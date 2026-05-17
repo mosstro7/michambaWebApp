@@ -45,6 +45,7 @@ export interface Order {
   id: string;
   clienteId: string;
   categoriaId: string;
+  titulo: string;
   descripcion: string;
   barrio: string;
   estado: OrderStatus;
@@ -60,6 +61,11 @@ export interface Proposal {
   precioOferta: number;
   estado: ProposalStatus;
   createdAt: string;
+  especialista?: {
+    id: string;
+    nombre: string;
+    apellido: string;
+  };
 }
 
 export interface Message {

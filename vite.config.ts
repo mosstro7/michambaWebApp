@@ -17,7 +17,7 @@ export default defineConfig(({mode}) => {
           name: 'Mi Chamba',
           short_name: 'MiChamba',
           description: 'Conexión entre clientes y especialistas en Buenos Aires',
-          theme_color: '#3b82f6',
+          theme_color: '#0F766E',
           icons: [
             {
               src: 'pwa-192x192.png',
