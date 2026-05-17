@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { login } from '@/lib/api';
+import { Role } from '@/types';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Mail, Lock } from 'lucide-react';
@@ -17,8 +18,8 @@ export function Login() {
     setError('');
     setIsLoading(true);
     try {
-      await login(email, password);
-      navigate('/');
+      const { user } = await login(email, password);
+      navigate(user.rol === Role.ADMIN ? '/admin' : '/');
     } catch (err: any) {
       setError(err.message || 'Email o contraseña incorrectos');
     } finally {

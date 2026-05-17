@@ -67,6 +67,19 @@ export async function createOrder(
   return handleResponse<Order>(res);
 }
 
+export async function getUsuarios() {
+  const res = await fetch(`${BASE_URL}/admin/usuarios`, { headers: authHeaders() });
+  return handleResponse<{ id: string; nombre: string; email: string; rol: string; createdAt: string }[]>(res);
+}
+
+export async function deleteUsuario(id: string) {
+  const res = await fetch(`${BASE_URL}/admin/usuarios/${id}`, {
+    method: 'DELETE',
+    headers: authHeaders(),
+  });
+  return handleResponse<{ message: string }>(res);
+}
+
 export async function getCategories() {
   const res = await fetch(`${BASE_URL}/categories`);
   return handleResponse<{ id: string; nombre: string }[]>(res);

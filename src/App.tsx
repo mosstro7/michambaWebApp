@@ -1,7 +1,8 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Layout } from './components/layout/Layout';
 import { ProtectedRoute } from './components/layout/ProtectedRoute';
 import { useAuthStore } from './store/authStore';
+import { Role } from './types';
 
 // Pages
 import { Landing } from './pages/Landing';
@@ -11,30 +12,43 @@ import { Dashboard } from './pages/Dashboard';
 import { NewOrder } from './pages/NewOrder';
 import { OrderDetail } from './pages/OrderDetail';
 import { Profile } from './pages/Profile';
+import { Admin } from './pages/Admin';
 
 export default function App() {
-  const { isAuthenticated } = useAuthStore();
+  const { isAuthenticated, user } = useAuthStore();
+
+  const homeElement = !isAuthenticated
+    ? <Landing />
+    : user?.rol === Role.ADMIN
+    ? <Navigate to="/admin" replace />
+    : <Dashboard />;
 
   return (
     <Router>
       <Layout showNavigation={true}>
         <Routes>
-          <Route path="/" element={isAuthenticated ? <Dashboard /> : <Landing />} />
+          <Route path="/" element={homeElement} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
-          
+
+          <Route path="/admin" element={
+            <ProtectedRoute role={Role.ADMIN}>
+              <Admin />
+            </ProtectedRoute>
+          } />
+
           <Route path="/dashboard" element={
             <ProtectedRoute>
               <Dashboard />
             </ProtectedRoute>
           } />
-          
+
           <Route path="/new-order" element={
             <ProtectedRoute>
               <NewOrder />
             </ProtectedRoute>
           } />
-          
+
           <Route path="/order/:id" element={
             <ProtectedRoute>
               <OrderDetail />
