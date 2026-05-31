@@ -1,16 +1,18 @@
 import { NavLink } from 'react-router-dom';
-import { Home, ListChecks, User, LayoutDashboard } from 'lucide-react';
+import { Home, ListChecks, User, LayoutDashboard, MessageCircle, Briefcase } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { Role } from '@/types';
 import { cn } from '@/utils';
 
 const TAB_CONFIG = {
   [Role.CLIENTE]: [
-    { to: '/', icon: Home, label: 'Inicio' },
+    { to: '/', icon: Home, label: 'Mis Pedidos', end: true },
+    { to: '/contact', icon: MessageCircle, label: 'Contacto' },
     { to: '/profile', icon: User, label: 'Perfil' },
   ],
   [Role.ESPECIALISTA]: [
-    { to: '/', icon: ListChecks, label: 'Feed' },
+    { to: '/', icon: ListChecks, label: 'Feed', end: true },
+    { to: '/my-jobs', icon: Briefcase, label: 'Mis Trabajos' },
     { to: '/profile', icon: User, label: 'Perfil' },
   ],
   [Role.ADMIN]: [
@@ -29,7 +31,7 @@ export function TabBar() {
         <NavLink
           key={tab.to}
           to={tab.to}
-          end={tab.to === '/'}
+          end={tab.end}
           className={({ isActive }) =>
             cn(
               'flex flex-col items-center justify-center w-full h-full space-y-1 transition-colors',
