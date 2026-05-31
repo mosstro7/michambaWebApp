@@ -9,6 +9,7 @@ import { Role, OrderStatus, Order } from '@/types';
 import { formatDate, cn } from '@/utils';
 import { Plus, Briefcase } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
+import { HorizontalScroll } from '@/components/ui/HorizontalScroll';
 
 export function Dashboard() {
   const { user } = useAuthStore();
@@ -106,7 +107,7 @@ function EspecialistaDashboard({ orders }: { orders: Order[] }) {
           <p className="text-gray-500 text-sm">Encuentra nuevas oportunidades de trabajo</p>
         </div>
 
-        <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar -mx-4 px-4">
+        <HorizontalScroll>
           <Button
             size="sm"
             variant={filter === 'ALL' ? 'primary' : 'outline'}
@@ -127,7 +128,7 @@ function EspecialistaDashboard({ orders }: { orders: Order[] }) {
               {cat.nombre}
             </Button>
           ))}
-        </div>
+        </HorizontalScroll>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
