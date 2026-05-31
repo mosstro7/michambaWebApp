@@ -28,36 +28,33 @@ export function Navbar() {
 
   return (
     <nav className="sticky top-0 z-50 bg-white border-b border-gray-200 px-4 h-16 flex items-center justify-between shadow-sm">
-      {/* Logo */}
-      <Link to="/" className="flex items-center space-x-2 flex-shrink-0">
-        <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-          <span className="text-white font-bold">M</span>
-        </div>
-        <span className="font-bold text-xl tracking-tight">Mi Chamba</span>
-      </Link>
+      {/* Left: logo + nav links */}
+      <div className="flex items-center gap-1">
+        <Link to="/" className="flex items-center space-x-2 flex-shrink-0 mr-3">
+          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+            <span className="text-white font-bold">M</span>
+          </div>
+          <span className="font-bold text-xl tracking-tight">Mi Chamba</span>
+        </Link>
 
-      {/* Nav links — desktop only */}
-      {isAuthenticated && links.length > 0 && (
-        <div className="hidden md:flex items-center gap-1">
-          {links.map((link) => (
-            <NavLink
-              key={link.to}
-              to={link.to}
-              end={link.end}
-              className={({ isActive }) =>
-                cn(
-                  'px-3 py-1.5 rounded-lg text-sm font-medium transition-colors',
-                  isActive
-                    ? 'bg-blue-50 text-blue-600'
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50',
-                )
-              }
-            >
-              {link.label}
-            </NavLink>
-          ))}
-        </div>
-      )}
+        {isAuthenticated && links.map((link) => (
+          <NavLink
+            key={link.to}
+            to={link.to}
+            end={link.end}
+            className={({ isActive }) =>
+              cn(
+                'hidden md:block px-3 py-1.5 rounded-lg text-sm font-medium transition-colors',
+                isActive
+                  ? 'bg-blue-50 text-blue-600'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50',
+              )
+            }
+          >
+            {link.label}
+          </NavLink>
+        ))}
+      </div>
 
       {/* Right: user info + logout */}
       {isAuthenticated ? (
