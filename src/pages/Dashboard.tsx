@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { CategoryIcon } from '@/components/ui/CategoryIcon';
@@ -7,7 +7,7 @@ import { useAuthStore } from '@/store/authStore';
 import { getOrders, getMyOrders } from '@/lib/api';
 import { Role, OrderStatus, Order } from '@/types';
 import { formatDate, cn } from '@/utils';
-import { Plus, Briefcase } from 'lucide-react';
+import { Plus, Briefcase, MapPin, ChevronDown, Check } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { HorizontalScroll } from '@/components/ui/HorizontalScroll';
 
@@ -92,26 +92,56 @@ function ClienteDashboard({ orders }: { orders: Order[] }) {
 }
 
 function EspecialistaDashboard({ orders }: { orders: Order[] }) {
-  const [filter, setFilter] = useState('ALL');
+  const [categoryFilter, setCategoryFilter] = useState('ALL');
+  const [barrioFilter, setBarrioFilter] = useState('ALL');
+
+  const availableBarrios = useMemo(
+    () =>
+      [
+        ...new Set(
+          orders
+            .filter((o) => o.estado === OrderStatus.ABIERTO)
+            .map((o) => o.barrio)
+            .filter(Boolean),
+        ),
+      ].sort() as string[],
+    [orders],
+  );
 
   const visible = orders.filter(
     (o) =>
-      o.estado === OrderStatus.ABIERTO && (filter === 'ALL' || o.categoriaId === filter),
+      o.estado === OrderStatus.ABIERTO &&
+      (categoryFilter === 'ALL' || o.categoriaId === categoryFilter) &&
+      (barrioFilter === 'ALL' || o.barrio === barrioFilter),
   );
 
+  const hasFilters = categoryFilter !== 'ALL' || barrioFilter !== 'ALL';
+
+  const clearFilters = () => {
+    setCategoryFilter('ALL');
+    setBarrioFilter('ALL');
+  };
+
   return (
-    <div className="space-y-6 pt-4">
-      <div className="flex flex-col gap-4">
-        <div>
-          <h1 className="text-2xl font-bold">Feed de Pedidos</h1>
-          <p className="text-gray-500 text-sm">Encuentra nuevas oportunidades de trabajo</p>
+    <div className="space-y-5 pt-4">
+      <div className="flex flex-col gap-3">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-bold">Feed de Pedidos</h1>
+            <p className="text-gray-500 text-sm">Encuentra nuevas oportunidades de trabajo</p>
+          </div>
+          <BarrioSelector
+            barrios={availableBarrios}
+            value={barrioFilter}
+            onChange={setBarrioFilter}
+          />
         </div>
 
         <HorizontalScroll>
           <Button
             size="sm"
-            variant={filter === 'ALL' ? 'primary' : 'outline'}
-            onClick={() => setFilter('ALL')}
+            variant={categoryFilter === 'ALL' ? 'primary' : 'outline'}
+            onClick={() => setCategoryFilter('ALL')}
             className="rounded-full flex-shrink-0"
           >
             Todos
@@ -120,8 +150,8 @@ function EspecialistaDashboard({ orders }: { orders: Order[] }) {
             <Button
               key={cat.id}
               size="sm"
-              variant={filter === cat.id ? 'primary' : 'outline'}
-              onClick={() => setFilter(cat.id)}
+              variant={categoryFilter === cat.id ? 'primary' : 'outline'}
+              onClick={() => setCategoryFilter(cat.id)}
               className="rounded-full flex-shrink-0 whitespace-nowrap"
               leftIcon={<CategoryIcon name={cat.icono} size={16} />}
             >
@@ -129,17 +159,145 @@ function EspecialistaDashboard({ orders }: { orders: Order[] }) {
             </Button>
           ))}
         </HorizontalScroll>
+
+        {hasFilters && (
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-gray-500">
+              {visible.length} resultado{visible.length !== 1 ? 's' : ''}
+            </span>
+            <button
+              onClick={clearFilters}
+              className="text-teal-600 hover:text-teal-700 font-medium"
+            >
+              Limpiar filtros
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {visible.length > 0 ? (
           visible.map((order) => <OrderCard key={order.id} order={order} />)
         ) : (
-          <div className="col-span-full py-12 text-center text-gray-500">
-            No hay pedidos disponibles en esta categoría.
+          <div className="col-span-full py-12 text-center space-y-2">
+            <p className="text-gray-500">
+              {hasFilters
+                ? 'No hay pedidos con los filtros seleccionados.'
+                : 'No hay pedidos disponibles.'}
+            </p>
+            {hasFilters && (
+              <button
+                onClick={clearFilters}
+                className="text-teal-600 hover:text-teal-700 text-sm font-medium"
+              >
+                Limpiar filtros
+              </button>
+            )}
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+interface BarrioSelectorProps {
+  barrios: string[];
+  value: string;
+  onChange: (barrio: string) => void;
+}
+
+function BarrioSelector({ barrios, value, onChange }: BarrioSelectorProps) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function handleOutside(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+        setSearch('');
+      }
+    }
+    document.addEventListener('mousedown', handleOutside);
+    return () => document.removeEventListener('mousedown', handleOutside);
+  }, [open]);
+
+  const filtered = barrios.filter((b) =>
+    b.toLowerCase().includes(search.toLowerCase()),
+  );
+
+  const isActive = value !== 'ALL';
+
+  return (
+    <div ref={ref} className="relative flex-shrink-0">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className={cn(
+          'flex items-center gap-1.5 px-3 py-2 rounded-xl border text-sm font-medium transition-colors whitespace-nowrap',
+          isActive
+            ? 'border-teal-600 bg-teal-50 text-teal-700'
+            : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300',
+        )}
+      >
+        <MapPin size={14} />
+        <span className="max-w-[110px] truncate">{isActive ? value : 'Barrio'}</span>
+        <ChevronDown
+          size={14}
+          className={cn('transition-transform duration-200', open && 'rotate-180')}
+        />
+      </button>
+
+      {open && (
+        <div className="absolute right-0 top-full mt-1.5 z-30 bg-white border border-gray-200 rounded-2xl shadow-lg w-56 overflow-hidden">
+          <div className="p-2 border-b border-gray-100">
+            <input
+              autoFocus
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Buscar barrio..."
+              className="w-full px-3 py-1.5 text-sm rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+            />
+          </div>
+          <ul className="max-h-52 overflow-y-auto py-1">
+            <li>
+              <button
+                onClick={() => { onChange('ALL'); setOpen(false); setSearch(''); }}
+                className={cn(
+                  'w-full text-left px-4 py-2 text-sm hover:bg-gray-50 transition-colors flex items-center gap-2',
+                  !isActive ? 'text-teal-700 font-semibold' : 'text-gray-700',
+                )}
+              >
+                {!isActive && <Check size={14} className="flex-shrink-0" />}
+                <span className={!isActive ? '' : 'ml-[18px]'}>Todos los barrios</span>
+              </button>
+            </li>
+            {filtered.map((barrio) => (
+              <li key={barrio}>
+                <button
+                  onClick={() => { onChange(barrio); setOpen(false); setSearch(''); }}
+                  className={cn(
+                    'w-full text-left px-4 py-2 text-sm hover:bg-gray-50 transition-colors flex items-center gap-2',
+                    value === barrio ? 'text-teal-700 font-semibold' : 'text-gray-700',
+                  )}
+                >
+                  {value === barrio ? (
+                    <Check size={14} className="flex-shrink-0" />
+                  ) : (
+                    <span className="w-[14px] flex-shrink-0" />
+                  )}
+                  {barrio}
+                </button>
+              </li>
+            ))}
+            {filtered.length === 0 && (
+              <li className="px-4 py-3 text-sm text-gray-400 text-center">
+                Sin resultados
+              </li>
+            )}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }
