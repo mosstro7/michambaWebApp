@@ -13,6 +13,8 @@ import { NewOrder } from './pages/NewOrder';
 import { OrderDetail } from './pages/OrderDetail';
 import { Profile } from './pages/Profile';
 import { Admin } from './pages/Admin';
+import { ContactArea } from './pages/ContactArea';
+import { MyJobs } from './pages/MyJobs';
 
 export default function App() {
   const { isAuthenticated, user } = useAuthStore();
@@ -73,12 +75,15 @@ export default function App() {
             </ProtectedRoute>
           } />
 
-          <Route path="/messages" element={
-            <ProtectedRoute>
-              <div className="py-20 text-center">
-                <h2 className="text-xl font-bold">Mis Mensajes</h2>
-                <p className="text-gray-500">El chat estará disponible cuando se acepte una propuesta.</p>
-              </div>
+          <Route path="/contact" element={
+            <ProtectedRoute role={Role.CLIENTE}>
+              <ContactArea />
+            </ProtectedRoute>
+          } />
+
+          <Route path="/my-jobs" element={
+            <ProtectedRoute role={Role.ESPECIALISTA}>
+              <MyJobs />
             </ProtectedRoute>
           } />
         </Routes>

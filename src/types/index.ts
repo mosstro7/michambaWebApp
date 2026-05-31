@@ -68,6 +68,21 @@ export interface Proposal {
   };
 }
 
+export interface OrderWithSpecialist extends Order {
+  propuestaAceptada?: {
+    especialista?: { id: string; nombre: string; apellido: string };
+  };
+}
+
+export interface ProposalWithOrder extends Proposal {
+  pedido?: {
+    id: string;
+    titulo: string;
+    barrio: string;
+    cliente?: { id: string; nombre: string; apellido: string };
+  };
+}
+
 export interface Message {
   id: string;
   chatId: string;

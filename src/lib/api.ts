@@ -1,5 +1,5 @@
 import { useAuthStore } from '@/store/authStore';
-import type { Order, User, Proposal } from '@/types';
+import type { Order, User, Proposal, ProposalWithOrder } from '@/types';
 
 const BASE_URL = import.meta.env.VITE_API_URL as string;
 
@@ -105,4 +105,9 @@ export async function createProposal(orderId: string, precio: number, mensaje: s
 export async function getOrder(id: string) {
   const res = await fetch(`${BASE_URL}/orders/${id}`, { headers: authHeaders() });
   return handleResponse<Order & { propuestas?: Proposal[] }>(res);
+}
+
+export async function getMyProposals() {
+  const res = await fetch(`${BASE_URL}/proposals/mine`, { headers: authHeaders() });
+  return handleResponse<ProposalWithOrder[]>(res);
 }
