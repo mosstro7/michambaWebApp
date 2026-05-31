@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
-import { LogOut, User as UserIcon } from 'lucide-react';
+import { LogOut } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
+import { Avatar } from '@/components/ui/Avatar';
 
 export function Navbar() {
   const { user, logout, isAuthenticated } = useAuthStore();
@@ -17,13 +18,7 @@ export function Navbar() {
       {isAuthenticated ? (
         <div className="flex items-center space-x-4">
           <Link to="/profile" className="flex items-center space-x-2 text-gray-700 hover:text-blue-600 transition-colors">
-            <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center overflow-hidden">
-              {user?.avatar ? (
-                <img src={user.avatar} alt={user.nombre} className="w-full h-full object-cover" />
-              ) : (
-                <UserIcon size={20} className="text-gray-400" />
-              )}
-            </div>
+            <Avatar nombre={user?.nombre || ''} apellido={user?.apellido} size="sm" />
             <span className="hidden md:block font-medium">{user?.nombre}</span>
           </Link>
           <button 

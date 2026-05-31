@@ -56,30 +56,31 @@ export function NewOrder() {
         <h1 className="text-xl font-bold ml-2">Publicar Pedido</h1>
       </div>
 
-      <div className="mb-8 flex justify-between px-2">
-        {[1, 2].map((s) => (
-          <div key={s} className="flex flex-col items-center flex-1">
-            <div
-              className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-colors ${
-                s === step
-                  ? 'bg-teal-700 text-white'
-                  : s < step
-                  ? 'bg-green-500 text-white'
-                  : 'bg-gray-200 text-gray-500'
-              }`}
-            >
-              {s < step ? <Check size={16} /> : s}
-            </div>
-            <div className="h-1 w-full bg-gray-200 mt-2 relative overflow-hidden">
-              {s <= step && (
-                <div
-                  className="absolute inset-0 bg-teal-700 transition-all duration-300"
-                  style={{ width: s === step ? '50%' : '100%' }}
-                />
-              )}
-            </div>
-          </div>
-        ))}
+      <div className="mb-8 space-y-3 px-2">
+        <div className="flex items-center gap-3">
+          {[1, 2].map((s, i) => (
+            <span key={s} className="contents">
+              <div
+                className={`w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center text-sm font-bold transition-colors ${
+                  s < step
+                    ? 'bg-green-500 text-white'
+                    : s === step
+                    ? 'bg-teal-700 text-white'
+                    : 'bg-gray-200 text-gray-500'
+                }`}
+              >
+                {s < step ? <Check size={16} /> : s}
+              </div>
+              {i === 0 && <div className="flex-1 h-px bg-gray-200" />}
+            </span>
+          ))}
+        </div>
+        <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
+          <div
+            className="h-full bg-teal-700 rounded-full transition-all duration-500"
+            style={{ width: `${(step / 2) * 100}%` }}
+          />
+        </div>
       </div>
 
       <form onSubmit={handleSubmit}>

@@ -7,7 +7,7 @@ import { useAuthStore } from '@/store/authStore';
 import { getOrders, getMyOrders } from '@/lib/api';
 import { Role, OrderStatus, Order } from '@/types';
 import { formatDate, cn } from '@/utils';
-import { Plus } from 'lucide-react';
+import { Plus, Briefcase } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 
 export function Dashboard() {
@@ -78,9 +78,6 @@ function ClienteDashboard({ orders }: { orders: Order[] }) {
           orders.map((order) => <OrderCard key={order.id} order={order} />)
         ) : (
           <div className="col-span-full py-12 flex flex-col items-center justify-center text-center space-y-4">
-            <div className="w-16 h-16 bg-teal-50 rounded-full flex items-center justify-center text-teal-700">
-              <Plus size={32} />
-            </div>
             <div>
               <h3 className="font-semibold text-lg">No tienes pedidos aún</h3>
               <p className="text-gray-500">Publica tu primera necesidad para recibir propuestas.</p>
@@ -109,7 +106,7 @@ function EspecialistaDashboard({ orders }: { orders: Order[] }) {
           <p className="text-gray-500 text-sm">Encuentra nuevas oportunidades de trabajo</p>
         </div>
 
-        <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
+        <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar -mx-4 px-4">
           <Button
             size="sm"
             variant={filter === 'ALL' ? 'primary' : 'outline'}
@@ -161,7 +158,11 @@ function OrderCard({ order }: { order: Order }) {
         <div className="flex justify-between items-start mb-3">
           <div className="flex items-center space-x-3">
             <div className="w-10 h-10 bg-teal-50 rounded-xl flex items-center justify-center text-teal-700">
-              {category && <CategoryIcon name={category.icono} size={20} />}
+              {category ? (
+                <CategoryIcon name={category.icono} size={20} />
+              ) : (
+                <Briefcase size={20} />
+              )}
             </div>
             <div>
               <h3 className="font-bold text-gray-900 leading-tight">

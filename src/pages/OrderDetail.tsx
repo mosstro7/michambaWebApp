@@ -9,6 +9,7 @@ import { Card } from '@/components/ui/Card';
 import { CategoryIcon } from '@/components/ui/CategoryIcon';
 import { formatCurrency, formatDate } from '@/utils';
 import { ChevronLeft, MapPin, Calendar, MessageCircle, X, CheckCircle } from 'lucide-react';
+import { Avatar } from '@/components/ui/Avatar';
 
 type OrderWithProposals = Order & { propuestas?: Proposal[] };
 
@@ -276,7 +277,6 @@ function ProposalCard({
   const nombreCompleto = especialista
     ? `${especialista.nombre} ${especialista.apellido}`.trim()
     : `Especialista #${proposal.especialistaId.slice(0, 6)}`;
-  const avatarUrl = `https://i.pravatar.cc/150?u=${proposal.especialistaId}`;
 
   const isAceptada = proposal.estado === ProposalStatus.ACEPTADA;
   const isRechazada = proposal.estado === ProposalStatus.RECHAZADA;
@@ -293,10 +293,10 @@ function ProposalCard({
     >
       <div className="flex items-start justify-between mb-4">
         <div className="flex items-center space-x-3">
-          <img
-            src={avatarUrl}
-            alt={nombreCompleto}
-            className="w-12 h-12 rounded-full border-2 border-white shadow-sm"
+          <Avatar
+            nombre={especialista?.nombre || 'Especialista'}
+            apellido={especialista?.apellido}
+            size="md"
           />
           <div>
             <h4 className="font-bold">{nombreCompleto}</h4>

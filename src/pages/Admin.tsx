@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { getUsuarios, deleteUsuario } from '@/lib/api';
 import { formatDate } from '@/utils';
 import { Trash2 } from 'lucide-react';
+import { useAuthStore } from '@/store/authStore';
 
 interface Usuario {
   id: string;
@@ -18,6 +19,7 @@ const ROL_COLORS: Record<string, string> = {
 };
 
 export function Admin() {
+  const { user: currentUser } = useAuthStore();
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
@@ -104,7 +106,15 @@ export function Admin() {
                     </td>
                     <td className="px-4 py-3 text-gray-500">{formatDate(u.createdAt)}</td>
                     <td className="px-4 py-3 text-right">
-                      {confirmId === u.id ? (
+                      {u.rol === 'ADMIN' || u.id === currentUser?.id ? (
+                        <button
+                          disabled
+                          className="p-1.5 text-gray-200 rounded-lg cursor-not-allowed"
+                          title={u.id === currentUser?.id ? 'No podés eliminar tu propio usuario' : 'No se puede eliminar un administrador'}
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      ) : confirmId === u.id ? (
                         <div className="flex items-center justify-end gap-2">
                           <span className="text-xs text-gray-500">¿Confirmar?</span>
                           <button

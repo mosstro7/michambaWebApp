@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
-import { User, Phone, MapPin, ShieldCheck, ChevronRight, LogOut, Settings } from 'lucide-react';
+import { Phone, MapPin, ShieldCheck, ChevronRight, LogOut, Settings } from 'lucide-react';
+import { Avatar } from '@/components/ui/Avatar';
 
 export function Profile() {
   const { user, logout } = useAuthStore();
@@ -22,13 +23,12 @@ export function Profile() {
 
       <section className="flex flex-col items-center space-y-4">
         <div className="relative">
-          <div className="w-24 h-24 rounded-3xl bg-blue-100 flex items-center justify-center text-blue-600 overflow-hidden border-4 border-white shadow-md">
-            {user.avatar ? (
-               <img src={user.avatar} alt={user.nombre} className="w-full h-full object-cover" />
-            ) : (
-              <User size={48} />
-            )}
-          </div>
+          <Avatar
+            nombre={user.nombre}
+            apellido={user.apellido}
+            size="lg"
+            className="border-4 border-white shadow-md"
+          />
           {user.verificado && (
             <div className="absolute -bottom-1 -right-1 bg-green-500 text-white p-1 rounded-full border-2 border-white">
               <ShieldCheck size={16} />
