@@ -92,6 +92,14 @@ export interface Message {
   createdAt: string;
 }
 
+export interface MessageWithSender extends Message {
+  remitente?: {
+    id: string;
+    nombre: string;
+    apellido: string;
+  };
+}
+
 export interface Chat {
   id: string;
   pedidoId: string;

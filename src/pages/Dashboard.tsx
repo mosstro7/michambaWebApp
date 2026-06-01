@@ -342,11 +342,14 @@ function OrderCard({ order }: { order: Order }) {
 
         <p className="text-sm text-gray-600 line-clamp-2 mb-4 h-10">{order.descripcion}</p>
 
-        <div className="flex justify-end items-center pt-3 border-t border-gray-50 text-[10px] sm:text-xs">
-          <div className="flex flex-col items-end">
+        <div className="flex justify-between items-center pt-3 border-t border-gray-50 text-[10px] sm:text-xs">
+          <div className="flex flex-col">
             <span className="text-gray-400 uppercase font-medium">Publicado</span>
             <span className="text-gray-900">{formatDate(order.createdAt)}</span>
           </div>
+          <span className="text-teal-700 font-semibold text-xs hover:text-teal-800">
+            Ver detalle →
+          </span>
         </div>
       </Card>
     </Link>

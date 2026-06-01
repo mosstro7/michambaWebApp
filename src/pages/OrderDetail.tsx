@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getOrder, createProposal, acceptProposal } from '@/lib/api';
+import { getOrder, createProposal, acceptProposal, getChatByOrder } from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
 import { CATEGORIES } from '@/data/mockData';
 import { OrderStatus, ProposalStatus, Role, Order, Proposal } from '@/types';
@@ -22,18 +22,27 @@ export function OrderDetail() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
+  const [chatId, setChatId] = useState<string | null>(null);
+  const [loadingChat, setLoadingChat] = useState(false);
 
   useEffect(() => {
     if (!id) return;
     setIsLoading(true);
     getOrder(id)
-      .then(setOrder)
+      .then((data) => {
+        setOrder(data);
+        if (data.estado === OrderStatus.EN_PROGRESO) {
+          getChatByOrder(id)
+            .then((chat) => setChatId(chat.id))
+            .catch(() => {});
+        }
+      })
       .catch((err) => setError(err.message || 'Error al cargar el pedido'))
       .finally(() => setIsLoading(false));
   }, [id]);
 
   const handleAcceptProposal = async (proposalId: string) => {
-    await acceptProposal(proposalId);
+    const result = await acceptProposal(proposalId);
     setOrder((prev) => {
       if (!prev) return prev;
       return {
@@ -45,6 +54,15 @@ export function OrderDetail() {
         })),
       };
     });
+    const resolvedChatId = result.chat?.id;
+    if (resolvedChatId) {
+      navigate(`/chats/${resolvedChatId}`);
+    } else if (id) {
+      setLoadingChat(true);
+      getChatByOrder(id)
+        .then((chat) => navigate(`/chats/${chat.id}`))
+        .catch(() => setLoadingChat(false));
+    }
   };
 
   if (isLoading) {
@@ -71,6 +89,11 @@ export function OrderDetail() {
   const isEspecialista = user?.rol === Role.ESPECIALISTA;
   const propuestas = order.propuestas ?? [];
   const yaEnvioProspuesta = isEspecialista && propuestas.some((p) => p.especialistaId === user?.id);
+  const miPropuestaAceptada =
+    isEspecialista && propuestas.some(
+      (p) => p.especialistaId === user?.id && p.estado === ProposalStatus.ACEPTADA,
+    );
+  const isEnProgreso = order.estado === OrderStatus.EN_PROGRESO;
 
   return (
     <div className="space-y-6 pt-4 pb-20">
@@ -126,6 +149,29 @@ export function OrderDetail() {
             </div>
           )}
         </section>
+      )}
+
+      {(isOwner || miPropuestaAceptada) && isEnProgreso && (
+        <div className="sticky bottom-4 mx-auto w-full md:relative bg-white p-4 rounded-2xl shadow-lg border border-teal-100">
+          <Button
+            className="w-full"
+            isLoading={loadingChat}
+            disabled={loadingChat}
+            leftIcon={<MessageCircle size={18} />}
+            onClick={() => {
+              if (chatId) {
+                navigate(`/chats/${chatId}`);
+              } else if (id) {
+                setLoadingChat(true);
+                getChatByOrder(id)
+                  .then((chat) => navigate(`/chats/${chat.id}`))
+                  .catch(() => setLoadingChat(false));
+              }
+            }}
+          >
+            Ir al Chat
+          </Button>
+        </div>
       )}
 
       {isEspecialista && order.estado === OrderStatus.ABIERTO && (

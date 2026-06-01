@@ -1,5 +1,5 @@
 import { useAuthStore } from '@/store/authStore';
-import type { Order, User, Proposal, ProposalWithOrder } from '@/types';
+import type { Order, User, Proposal, ProposalWithOrder, Chat, MessageWithSender } from '@/types';
 
 const BASE_URL = import.meta.env.VITE_API_URL as string;
 
@@ -90,7 +90,17 @@ export async function acceptProposal(id: string) {
     method: 'PATCH',
     headers: authHeaders(),
   });
-  return handleResponse<{ id: string; estado: string }>(res);
+  return handleResponse<{ id: string; estado: string; pedidoId?: string; chat?: { id: string } }>(res);
+}
+
+export async function getChatByOrder(orderId: string) {
+  const res = await fetch(`${BASE_URL}/chats/order/${orderId}`, { headers: authHeaders() });
+  return handleResponse<Chat>(res);
+}
+
+export async function getChatMessages(chatId: string) {
+  const res = await fetch(`${BASE_URL}/chats/${chatId}/messages`, { headers: authHeaders() });
+  return handleResponse<MessageWithSender[]>(res);
 }
 
 export async function createProposal(orderId: string, precio: number, mensaje: string) {

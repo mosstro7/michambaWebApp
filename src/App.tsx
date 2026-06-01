@@ -15,6 +15,7 @@ import { Profile } from './pages/Profile';
 import { Admin } from './pages/Admin';
 import { ContactArea } from './pages/ContactArea';
 import { MyJobs } from './pages/MyJobs';
+import { Chat } from './pages/Chat';
 
 export default function App() {
   const { isAuthenticated, user } = useAuthStore();
@@ -84,6 +85,12 @@ export default function App() {
           <Route path="/my-jobs" element={
             <ProtectedRoute role={Role.ESPECIALISTA}>
               <MyJobs />
+            </ProtectedRoute>
+          } />
+
+          <Route path="/chats/:id" element={
+            <ProtectedRoute>
+              <Chat />
             </ProtectedRoute>
           } />
         </Routes>

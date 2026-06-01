@@ -1,10 +1,13 @@
+import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { Home, ListChecks, User, LayoutDashboard, MessageCircle, Briefcase } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { Role } from '@/types';
 import { cn } from '@/utils';
 
-const TAB_CONFIG = {
+type TabItem = { to: string; icon: React.ComponentType<{ size?: number }>; label: string; end?: boolean };
+
+const TAB_CONFIG: Record<Role, TabItem[]> = {
   [Role.CLIENTE]: [
     { to: '/', icon: Home, label: 'Mis Pedidos', end: true },
     { to: '/contact', icon: MessageCircle, label: 'Contacto' },
