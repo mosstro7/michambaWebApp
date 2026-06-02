@@ -14,8 +14,9 @@ export function formatDate(date: string | Date) {
 }
 
 export function formatCurrency(amount: number) {
-  return new Intl.NumberFormat('es-AR', {
-    style: 'currency',
-    currency: 'ARS',
+  const n = new Intl.NumberFormat('es-AR', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
   }).format(amount);
+  return `ARS $ ${n}`;
 }

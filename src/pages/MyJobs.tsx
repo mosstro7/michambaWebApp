@@ -1,24 +1,37 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { getMyProposals } from '@/lib/api';
 import { ProposalStatus, ProposalWithOrder } from '@/types';
-import { formatDate, formatCurrency } from '@/utils';
-import { MapPin, Calendar, User, ArrowRight } from 'lucide-react';
+import { formatDate, formatCurrency, cn } from '@/utils';
+import { MapPin, Calendar, User, ArrowRight, Briefcase, FileText } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Avatar } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
 
+type Tab = 'trabajos' | 'propuestas';
+
+const STATUS_STYLES: Record<ProposalStatus, string> = {
+  [ProposalStatus.ACEPTADA]: 'bg-teal-100 text-teal-700',
+  [ProposalStatus.PENDIENTE]: 'bg-yellow-100 text-yellow-700',
+  [ProposalStatus.RECHAZADA]: 'bg-red-100 text-red-600',
+};
+
+const STATUS_LABELS: Record<ProposalStatus, string> = {
+  [ProposalStatus.ACEPTADA]: 'Aceptada',
+  [ProposalStatus.PENDIENTE]: 'Pendiente',
+  [ProposalStatus.RECHAZADA]: 'Rechazada',
+};
+
 export function MyJobs() {
-  const [jobs, setJobs] = useState<ProposalWithOrder[]>([]);
+  const [activeTab, setActiveTab] = useState<Tab>('trabajos');
+  const [allProposals, setAllProposals] = useState<ProposalWithOrder[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
     getMyProposals()
-      .then((data) =>
-        setJobs(data.filter((p) => p.estado === ProposalStatus.ACEPTADA)),
-      )
-      .catch((err) => setError(err.message || 'Error al cargar trabajos'))
+      .then(setAllProposals)
+      .catch((err) => setError(err.message || 'Error al cargar propuestas'))
       .finally(() => setIsLoading(false));
   }, []);
 
@@ -41,24 +54,56 @@ export function MyJobs() {
     );
   }
 
+  const jobs = allProposals.filter((p) => p.estado === ProposalStatus.ACEPTADA);
+  const propuestas = allProposals;
+
   return (
-    <div className="space-y-6 pt-4 pb-20">
-      <div>
+    <div className="space-y-0 pt-4 pb-20">
+      <div className="mb-5">
         <h1 className="text-2xl font-bold">Mis Trabajos</h1>
-        <p className="text-gray-500 text-sm">Propuestas aceptadas por clientes</p>
+        <p className="text-gray-500 text-sm">Seguimiento de tus propuestas y trabajos activos</p>
       </div>
 
-      {jobs.length === 0 ? (
-        <div className="py-16 text-center space-y-2">
-          <p className="text-gray-500 font-medium">No tenés trabajos activos</p>
-          <p className="text-sm text-gray-400">
-            Aquí verás tus propuestas cuando un cliente te elija.
-          </p>
-        </div>
+      {/* Tabs */}
+      <div className="flex border-b border-gray-200 mb-5">
+        <TabButton
+          active={activeTab === 'trabajos'}
+          icon={<Briefcase size={15} />}
+          label="Mis Trabajos"
+          count={jobs.length}
+          onClick={() => setActiveTab('trabajos')}
+        />
+        <TabButton
+          active={activeTab === 'propuestas'}
+          icon={<FileText size={15} />}
+          label="Mis Propuestas"
+          count={propuestas.length}
+          onClick={() => setActiveTab('propuestas')}
+        />
+      </div>
+
+      {activeTab === 'trabajos' ? (
+        jobs.length === 0 ? (
+          <EmptyState
+            message="No tenés trabajos activos"
+            detail="Aquí verás las propuestas cuando un cliente te elija."
+          />
+        ) : (
+          <div className="space-y-3">
+            {jobs.map((job) => (
+              <JobCard key={job.id} job={job} />
+            ))}
+          </div>
+        )
+      ) : propuestas.length === 0 ? (
+        <EmptyState
+          message="No enviaste propuestas aún"
+          detail="Explorá el feed y postulate a pedidos que te interesen."
+        />
       ) : (
         <div className="space-y-3">
-          {jobs.map((job) => (
-            <JobCard key={job.id} job={job} />
+          {propuestas.map((p) => (
+            <ProposalRow key={p.id} proposal={p} />
           ))}
         </div>
       )}
@@ -66,12 +111,58 @@ export function MyJobs() {
   );
 }
 
+function TabButton({
+  active,
+  icon,
+  label,
+  count,
+  onClick,
+}: {
+  active: boolean;
+  icon: React.ReactNode;
+  label: string;
+  count: number;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        'flex items-center gap-1.5 px-4 py-3 text-sm font-semibold border-b-2 transition-colors',
+        active
+          ? 'border-teal-600 text-teal-700'
+          : 'border-transparent text-gray-500 hover:text-gray-700',
+      )}
+    >
+      {icon}
+      {label}
+      <span
+        className={cn(
+          'text-[10px] font-bold px-1.5 py-0.5 rounded-full ml-0.5',
+          active ? 'bg-teal-100 text-teal-700' : 'bg-gray-100 text-gray-500',
+        )}
+      >
+        {count}
+      </span>
+    </button>
+  );
+}
+
+function EmptyState({ message, detail }: { message: string; detail: string }) {
+  return (
+    <div className="py-16 text-center space-y-2">
+      <p className="text-gray-500 font-medium">{message}</p>
+      <p className="text-sm text-gray-400">{detail}</p>
+    </div>
+  );
+}
+
+// ─── Tarjeta de trabajo aceptado ─────────────────────────────────────────────
+
 function JobCard({ job }: { job: ProposalWithOrder }) {
   const pedido = job.pedido;
   const cliente = pedido?.cliente;
-  const nombreCliente = cliente
-    ? `${cliente.nombre} ${cliente.apellido}`.trim()
-    : null;
+  const nombreCliente = cliente ? `${cliente.nombre} ${cliente.apellido}`.trim() : null;
 
   return (
     <Link to={`/order/${job.pedidoId}`}>
@@ -86,9 +177,7 @@ function JobCard({ job }: { job: ProposalWithOrder }) {
           )}
 
           <div className="flex-1 min-w-0">
-            <h3 className="font-bold text-gray-900 truncate">
-              {pedido?.titulo || 'Pedido'}
-            </h3>
+            <h3 className="font-bold text-gray-900 truncate">{pedido?.titulo || 'Pedido'}</h3>
             {nombreCliente ? (
               <p className="text-sm text-teal-700 font-medium">{nombreCliente}</p>
             ) : (
@@ -124,5 +213,60 @@ function JobCard({ job }: { job: ProposalWithOrder }) {
         </div>
       </Card>
     </Link>
+  );
+}
+
+// ─── Fila de propuesta enviada ───────────────────────────────────────────────
+
+function ProposalRow({ proposal }: { proposal: ProposalWithOrder }) {
+  const pedido = proposal.pedido;
+  const navigate = useNavigate();
+
+  return (
+    <Card className="hover:border-gray-300 transition-colors">
+      <div className="flex items-start gap-3">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <h3 className="font-bold text-gray-900 truncate">
+              {pedido?.titulo || 'Pedido'}
+            </h3>
+            {proposal.version != null && (
+              <span className="text-[10px] font-semibold text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded-full flex-shrink-0">
+                v{proposal.version}
+              </span>
+            )}
+          </div>
+          {pedido?.barrio && (
+            <p className="text-xs text-gray-400 flex items-center gap-1 mt-0.5">
+              <MapPin size={11} />
+              {pedido.barrio}
+            </p>
+          )}
+          <div className="flex items-center gap-2 mt-2">
+            <span
+              className={cn(
+                'text-[10px] font-bold px-2 py-1 rounded-full uppercase',
+                STATUS_STYLES[proposal.estado],
+              )}
+            >
+              {STATUS_LABELS[proposal.estado]}
+            </span>
+            <span className="text-sm font-bold text-gray-900">
+              {formatCurrency(proposal.precioOferta)}
+            </span>
+          </div>
+        </div>
+
+        <Button
+          size="sm"
+          variant="outline"
+          className="flex-shrink-0 rounded-lg"
+          onClick={() => navigate(`/order/${proposal.pedidoId}`)}
+          rightIcon={<ArrowRight size={14} />}
+        >
+          Ver detalle
+        </Button>
+      </div>
+    </Card>
   );
 }

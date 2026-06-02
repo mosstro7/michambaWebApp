@@ -53,6 +53,13 @@ export interface Order {
   updatedAt: string;
 }
 
+export interface ProposalVersionEntry {
+  version: number;
+  precio: number;
+  mensaje: string;
+  creadoEn: string;
+}
+
 export interface Proposal {
   id: string;
   pedidoId: string;
@@ -61,6 +68,8 @@ export interface Proposal {
   precioOferta: number;
   estado: ProposalStatus;
   createdAt: string;
+  version?: number;
+  versionHistory?: ProposalVersionEntry[];
   especialista?: {
     id: string;
     nombre: string;

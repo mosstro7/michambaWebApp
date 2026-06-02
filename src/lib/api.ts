@@ -90,7 +90,16 @@ export async function acceptProposal(id: string) {
     method: 'PATCH',
     headers: authHeaders(),
   });
-  return handleResponse<{ id: string; estado: string; pedidoId?: string; chat?: { id: string } }>(res);
+  return handleResponse<{ id: string; estado: string; pedidoId?: string; chatId?: string; chat?: { id: string } }>(res);
+}
+
+export async function updateProposal(id: string, precio: number, mensaje: string) {
+  const res = await fetch(`${BASE_URL}/proposals/${id}`, {
+    method: 'PATCH',
+    headers: authHeaders(),
+    body: JSON.stringify({ precio, mensaje }),
+  });
+  return handleResponse<Proposal>(res);
 }
 
 export async function getChatByOrder(orderId: string) {
