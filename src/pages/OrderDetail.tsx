@@ -218,39 +218,80 @@ export function OrderDetail() {
         </div>
       )}
 
-      {/* ESPECIALISTA: barra de acción contextual */}
-      {isEspecialista && (
-        <div className="sticky bottom-4 mx-auto w-full md:relative bg-white p-4 rounded-2xl shadow-lg border border-gray-100">
-          {miPropuesta?.estado === ProposalStatus.ACEPTADA ? (
-            <div className="space-y-3">
-              <div className="flex items-center justify-center gap-2 text-teal-700 text-sm font-medium">
+      {/* ESPECIALISTA: tarjeta inline con la propuesta existente */}
+      {isEspecialista && miPropuesta && (
+        <section className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h3 className="font-bold text-lg">Mi Propuesta</h3>
+            {miPropuesta.version != null && (
+              <span className="text-xs font-semibold text-teal-600 bg-teal-50 px-2.5 py-1 rounded-full">
+                Propuesta v{miPropuesta.version}
+              </span>
+            )}
+          </div>
+          <Card
+            className={cn(
+              miPropuesta.estado === ProposalStatus.ACEPTADA
+                ? 'border-teal-400 bg-teal-50/40'
+                : '',
+            )}
+          >
+            {miPropuesta.estado === ProposalStatus.ACEPTADA && (
+              <div className="flex items-center gap-2 text-teal-700 text-sm font-medium mb-4">
                 <CheckCircle size={16} />
-                Tu propuesta fue aceptada
+                Propuesta aceptada — no se puede modificar
               </div>
-              <Button
-                className="w-full"
-                leftIcon={<MessageCircle size={18} />}
-                isLoading={loadingChat}
-                disabled={loadingChat}
-                onClick={goToChat}
-              >
-                Ir al Chat
-              </Button>
+            )}
+            <div className="space-y-3 mb-4">
+              <div>
+                <span className="text-[10px] text-gray-400 uppercase font-bold block mb-0.5">
+                  Precio ofrecido
+                </span>
+                <span className="text-xl font-bold text-gray-900">
+                  {formatCurrency(miPropuesta.precioOferta)}
+                </span>
+              </div>
+              <div>
+                <span className="text-[10px] text-gray-400 uppercase font-bold block mb-0.5">
+                  Mensaje
+                </span>
+                <p className="text-sm text-gray-700 italic bg-gray-50 rounded-xl px-4 py-3 border border-gray-100 leading-relaxed">
+                  "{miPropuesta.descripcion}"
+                </p>
+              </div>
             </div>
-          ) : miPropuesta ? (
-            <div className="space-y-2">
-              <p className="text-center text-sm text-gray-500 font-medium">
-                Ya enviaste una propuesta para este pedido
-              </p>
-              <Button className="w-full" variant="outline" onClick={() => setEditModalOpen(true)}>
-                Ver mi propuesta
-              </Button>
+
+            {miPropuesta.versionHistory && miPropuesta.versionHistory.length > 0 && (
+              <VersionHistoryAccordion versions={miPropuesta.versionHistory} />
+            )}
+
+            <div className="mt-4">
+              {miPropuesta.estado === ProposalStatus.ACEPTADA ? (
+                <Button
+                  className="w-full"
+                  leftIcon={<MessageCircle size={18} />}
+                  isLoading={loadingChat}
+                  disabled={loadingChat}
+                  onClick={goToChat}
+                >
+                  Ir al Chat
+                </Button>
+              ) : (
+                <Button variant="outline" className="w-full" onClick={() => setEditModalOpen(true)}>
+                  Editar propuesta
+                </Button>
+              )}
             </div>
-          ) : order.estado === OrderStatus.ABIERTO ? (
-            <Button className="w-full" onClick={() => setModalOpen(true)}>
-              Enviar mi Propuesta
-            </Button>
-          ) : null}
+          </Card>
+        </section>
+      )}
+
+      {/* ESPECIALISTA: CTA "Enviar mi Propuesta" solo cuando no hay propuesta propia */}
+      {isEspecialista && !miPropuesta && order.estado === OrderStatus.ABIERTO && (
+        <div className="sticky bottom-4 mx-auto w-full md:relative bg-white p-4 rounded-2xl shadow-lg border border-gray-100">
+          <Button className="w-full" onClick={() => setModalOpen(true)}>
+            Enviar mi Propuesta
+          </Button>
         </div>
       )}
 
@@ -393,7 +434,6 @@ function EditProposalModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [saved, setSaved] = useState(false);
-  const [historyOpen, setHistoryOpen] = useState(false);
 
   const isAceptada = proposal.estado === ProposalStatus.ACEPTADA;
 
@@ -516,39 +556,9 @@ function EditProposalModal({
           </form>
         )}
 
-        {/* Historial de versiones */}
         {proposal.versionHistory && proposal.versionHistory.length > 0 && (
-          <div className="mt-5 pt-4 border-t border-gray-100">
-            <button
-              type="button"
-              onClick={() => setHistoryOpen((v) => !v)}
-              className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 font-medium"
-            >
-              <ChevronDown
-                size={15}
-                className={cn('transition-transform duration-200', historyOpen && 'rotate-180')}
-              />
-              Historial de versiones ({proposal.versionHistory.length})
-            </button>
-            {historyOpen && (
-              <ul className="mt-3 space-y-2">
-                {proposal.versionHistory
-                  .slice()
-                  .sort((a, b) => b.version - a.version)
-                  .map((v) => (
-                    <li key={v.version} className="bg-gray-50 rounded-xl px-4 py-3 text-sm">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-xs font-bold text-teal-600 uppercase">
-                          v{v.version}
-                        </span>
-                        <span className="text-xs text-gray-400">{formatDate(v.creadoEn)}</span>
-                      </div>
-                      <div className="font-semibold text-gray-900">{formatCurrency(v.precio)}</div>
-                      <div className="text-gray-500 italic text-xs mt-0.5">"{v.mensaje}"</div>
-                    </li>
-                  ))}
-              </ul>
-            )}
+          <div className="mt-5">
+            <VersionHistoryAccordion versions={proposal.versionHistory} />
           </div>
         )}
       </div>
@@ -571,7 +581,6 @@ function ProposalCard({
 }) {
   const [isAccepting, setIsAccepting] = useState(false);
   const [acceptError, setAcceptError] = useState('');
-  const [historyOpen, setHistoryOpen] = useState(false);
 
   const handleAccept = async () => {
     setAcceptError('');
@@ -668,41 +677,68 @@ function ProposalCard({
         </Button>
       )}
 
-      {/* Historial de versiones (vista cliente) */}
       {hasHistory && (
         <div className="mt-3 pt-3 border-t border-gray-50">
-          <button
-            type="button"
-            onClick={() => setHistoryOpen((v) => !v)}
-            className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600 font-medium"
-          >
-            <ChevronDown
-              size={13}
-              className={cn('transition-transform duration-200', historyOpen && 'rotate-180')}
-            />
-            {historyOpen
-              ? 'Ocultar historial'
-              : `Ver historial (${proposal.versionHistory!.length} versiones)`}
-          </button>
-          {historyOpen && (
-            <ul className="mt-2 space-y-2">
-              {proposal
-                .versionHistory!.slice()
-                .sort((a: ProposalVersionEntry, b: ProposalVersionEntry) => b.version - a.version)
-                .map((v: ProposalVersionEntry) => (
-                  <li key={v.version} className="bg-gray-50 rounded-lg px-3 py-2 text-xs">
-                    <div className="flex justify-between items-center mb-0.5">
-                      <span className="font-bold text-teal-600">v{v.version}</span>
-                      <span className="text-gray-400">{formatDate(v.creadoEn)}</span>
-                    </div>
-                    <div className="font-semibold text-gray-900">{formatCurrency(v.precio)}</div>
-                    <div className="text-gray-500 italic mt-0.5">"{v.mensaje}"</div>
-                  </li>
-                ))}
-            </ul>
-          )}
+          <VersionHistoryAccordion versions={proposal.versionHistory!} compact />
         </div>
       )}
     </Card>
+  );
+}
+
+// ─── Historial de versiones (compartido) ────────────────────────────────────
+
+function VersionHistoryAccordion({
+  versions,
+  compact = false,
+}: {
+  versions: ProposalVersionEntry[];
+  compact?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className={compact ? '' : 'pt-4 border-t border-gray-100'}>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className={cn(
+          'flex items-center gap-1.5 font-medium',
+          compact
+            ? 'text-xs text-gray-400 hover:text-gray-600'
+            : 'text-sm text-gray-500 hover:text-gray-700',
+        )}
+      >
+        <ChevronDown
+          size={compact ? 13 : 15}
+          className={cn('transition-transform duration-200', open && 'rotate-180')}
+        />
+        {open ? 'Ocultar historial' : `Historial de versiones (${versions.length})`}
+      </button>
+      {open && (
+        <ul className="mt-2 space-y-2">
+          {versions
+            .slice()
+            .sort((a, b) => b.version - a.version)
+            .map((v) => (
+              <li
+                key={v.version}
+                className={cn(
+                  'bg-gray-50 rounded-xl px-4 py-3',
+                  compact ? 'text-xs' : 'text-sm',
+                )}
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <span className="font-bold text-teal-600 uppercase text-[10px]">
+                    v{v.version}
+                  </span>
+                  <span className="text-gray-400 text-[10px]">{formatDate(v.creadoEn)}</span>
+                </div>
+                <div className="font-semibold text-gray-900">{formatCurrency(v.precio)}</div>
+                <div className="text-gray-500 italic mt-0.5">"{v.mensaje}"</div>
+              </li>
+            ))}
+        </ul>
+      )}
+    </div>
   );
 }
