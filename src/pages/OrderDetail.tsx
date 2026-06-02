@@ -143,7 +143,6 @@ export function OrderDetail() {
   const category = CATEGORIES.find((c) => c.id === order.categoriaId);
   const isOwner = user?.id === order.clienteId;
   const propuestas = order.propuestas ?? [];
-  const isEnProgreso = order.estado === OrderStatus.EN_PROGRESO;
 
   return (
     <div className="space-y-6 pt-4 pb-20">
@@ -201,21 +200,6 @@ export function OrderDetail() {
             </div>
           )}
         </section>
-      )}
-
-      {/* CLIENTE: botón "Ir al Chat" cuando el pedido está en progreso */}
-      {isOwner && isEnProgreso && (
-        <div className="sticky bottom-4 mx-auto w-full md:relative bg-white p-4 rounded-2xl shadow-lg border border-teal-100">
-          <Button
-            className="w-full"
-            isLoading={loadingChat}
-            disabled={loadingChat}
-            leftIcon={<MessageCircle size={18} />}
-            onClick={goToChat}
-          >
-            Ir al Chat
-          </Button>
-        </div>
       )}
 
       {/* ESPECIALISTA: tarjeta inline con la propuesta existente */}
