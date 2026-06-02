@@ -50,6 +50,7 @@ export function OrderDetail() {
   const [loadingChat, setLoadingChat] = useState(false);
   const [miPropuesta, setMiPropuesta] = useState<Proposal | null>(null);
   const [editModalOpen, setEditModalOpen] = useState(false);
+  const [chatError, setChatError] = useState('');
 
   useEffect(() => {
     if (!id) return;
@@ -60,7 +61,7 @@ export function OrderDetail() {
         if (data.estado === OrderStatus.EN_PROGRESO) {
           getChatByOrder(id)
             .then((chat) => setChatId(chat.id))
-            .catch(() => {});
+            .catch((err) => console.error('[OrderDetail] getChatByOrder al montar:', err));
         }
       })
       .catch((err) => setError(err.message || 'Error al cargar el pedido'))
@@ -87,13 +88,18 @@ export function OrderDetail() {
   }, [id, isEspecialista]);
 
   const goToChat = () => {
+    setChatError('');
     if (chatId) {
       navigate(`/chats/${chatId}`);
     } else if (id) {
       setLoadingChat(true);
       getChatByOrder(id)
         .then((chat) => navigate(`/chats/${chat.id}`))
-        .catch(() => setLoadingChat(false));
+        .catch((err) => {
+          console.error('[OrderDetail] goToChat getChatByOrder:', err);
+          setLoadingChat(false);
+          setChatError('No se pudo acceder al chat. Intentá de nuevo.');
+        });
     }
   };
 
@@ -179,6 +185,11 @@ export function OrderDetail() {
       {isOwner && (
         <section className="space-y-4">
           <h3 className="font-bold text-lg">Propuestas Recibidas ({propuestas.length})</h3>
+          {chatError && (
+            <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700 border border-red-200">
+              {chatError}
+            </div>
+          )}
           {propuestas.length > 0 ? (
             <div className="space-y-3">
               {propuestas.map((proposal) => (
@@ -251,15 +262,20 @@ export function OrderDetail() {
 
             <div className="mt-4">
               {miPropuesta.estado === ProposalStatus.ACEPTADA ? (
-                <Button
-                  className="w-full"
-                  leftIcon={<MessageCircle size={18} />}
-                  isLoading={loadingChat}
-                  disabled={loadingChat}
-                  onClick={goToChat}
-                >
-                  Ir al Chat
-                </Button>
+                <>
+                  <Button
+                    className="w-full"
+                    leftIcon={<MessageCircle size={18} />}
+                    isLoading={loadingChat}
+                    disabled={loadingChat}
+                    onClick={goToChat}
+                  >
+                    Ir al Chat
+                  </Button>
+                  {chatError && (
+                    <p className="text-xs text-red-600 mt-2 text-center">{chatError}</p>
+                  )}
+                </>
               ) : (
                 <Button variant="outline" className="w-full" onClick={() => setEditModalOpen(true)}>
                   Editar propuesta
