@@ -36,7 +36,7 @@ import { Avatar } from '@/components/ui/Avatar';
 type OrderWithProposals = Order & { propuestas?: Proposal[] };
 
 export function OrderDetail() {
-  const { id } = useParams();
+  const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuthStore();
 
@@ -72,16 +72,7 @@ export function OrderDetail() {
     if (!id || !isEspecialista) return;
     getMyProposals()
       .then((proposals) => {
-        console.log('[OrderDetail] orderId actual:', id);
-        console.log('[OrderDetail] GET /proposals/mine →', JSON.stringify(proposals, null, 2));
-        const mine =
-          proposals.find(
-            (p) =>
-              p.pedidoId === id ||
-              (p as any).orderId === id ||
-              p.pedido?.id === id,
-          ) ?? null;
-        console.log('[OrderDetail] miPropuesta encontrada:', mine);
+        const mine = proposals.find((p) => p.pedido?.id === id) ?? null;
         setMiPropuesta(mine);
       })
       .catch((err) => console.error('[OrderDetail] Error /proposals/mine:', err));
