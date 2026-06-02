@@ -71,10 +71,19 @@ export function OrderDetail() {
     if (!id || !isEspecialista) return;
     getMyProposals()
       .then((proposals) => {
-        const mine = proposals.find((p) => p.pedidoId === id) ?? null;
+        console.log('[OrderDetail] orderId actual:', id);
+        console.log('[OrderDetail] GET /proposals/mine →', JSON.stringify(proposals, null, 2));
+        const mine =
+          proposals.find(
+            (p) =>
+              p.pedidoId === id ||
+              (p as any).orderId === id ||
+              p.pedido?.id === id,
+          ) ?? null;
+        console.log('[OrderDetail] miPropuesta encontrada:', mine);
         setMiPropuesta(mine);
       })
-      .catch(() => {});
+      .catch((err) => console.error('[OrderDetail] Error /proposals/mine:', err));
   }, [id, isEspecialista]);
 
   const goToChat = () => {
