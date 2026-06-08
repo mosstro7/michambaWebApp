@@ -30,7 +30,10 @@ export function MyJobs() {
 
   useEffect(() => {
     getMyProposals()
-      .then(setAllProposals)
+      .then((data) => {
+        console.log('[MyJobs] /proposals/mine raw response:', JSON.stringify(data, null, 2));
+        setAllProposals(data);
+      })
       .catch((err) => setError(err.message || 'Error al cargar propuestas'))
       .finally(() => setIsLoading(false));
   }, []);
@@ -160,6 +163,7 @@ function EmptyState({ message, detail }: { message: string; detail: string }) {
 // ─── Tarjeta de trabajo aceptado ─────────────────────────────────────────────
 
 function JobCard({ job }: { job: ProposalWithOrder }) {
+  console.log('[JobCard] job object:', job);
   const pedido = job.pedido;
   const cliente = pedido?.cliente;
   const nombreCliente = cliente ? `${cliente.nombre} ${cliente.apellido}`.trim() : null;
@@ -219,6 +223,7 @@ function JobCard({ job }: { job: ProposalWithOrder }) {
 // ─── Fila de propuesta enviada ───────────────────────────────────────────────
 
 function ProposalRow({ proposal }: { proposal: ProposalWithOrder }) {
+  console.log('[ProposalRow] proposal object:', proposal);
   const pedido = proposal.pedido;
   const navigate = useNavigate();
 
