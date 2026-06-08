@@ -21,7 +21,7 @@ import {
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { CategoryIcon } from '@/components/ui/CategoryIcon';
-import { formatCurrency, formatDate, cn } from '@/utils';
+import { formatCurrency, formatDate, formatDateTime, cn } from '@/utils';
 import {
   ChevronLeft,
   ChevronDown,
@@ -30,6 +30,7 @@ import {
   MessageCircle,
   X,
   CheckCircle,
+  AlertTriangle,
 } from 'lucide-react';
 import { Avatar } from '@/components/ui/Avatar';
 
@@ -50,6 +51,7 @@ export function OrderDetail() {
   const [loadingChat, setLoadingChat] = useState(false);
   const [miPropuesta, setMiPropuesta] = useState<Proposal | null>(null);
   const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editSuccess, setEditSuccess] = useState(false);
   const [chatError, setChatError] = useState('');
 
   useEffect(() => {
@@ -207,6 +209,12 @@ export function OrderDetail() {
       {/* ESPECIALISTA: tarjeta inline con la propuesta existente */}
       {isEspecialista && miPropuesta && (
         <section className="space-y-3">
+          {editSuccess && (
+            <div className="rounded-lg bg-teal-50 px-4 py-3 text-sm text-teal-700 border border-teal-200 flex items-center gap-2">
+              <CheckCircle size={16} />
+              Oferta actualizada correctamente
+            </div>
+          )}
           <div className="flex items-center justify-between">
             <h3 className="font-bold text-lg">Mi Propuesta</h3>
             {miPropuesta.version != null && (
@@ -268,7 +276,7 @@ export function OrderDetail() {
                   )}
                 </>
               ) : (
-                <Button variant="outline" className="w-full" onClick={() => setEditModalOpen(true)}>
+                <Button variant="outline" className="w-full" onClick={() => { setEditModalOpen(true); setEditSuccess(false); }}>
                   Editar propuesta
                 </Button>
               )}
@@ -294,7 +302,11 @@ export function OrderDetail() {
         <EditProposalModal
           proposal={miPropuesta}
           onClose={() => setEditModalOpen(false)}
-          onSaved={(updated) => setMiPropuesta(updated)}
+          onSaved={(updated) => {
+            setMiPropuesta(updated);
+            setEditModalOpen(false);
+            setEditSuccess(true);
+          }}
           onGoToChat={() => {
             setEditModalOpen(false);
             goToChat();
@@ -424,21 +436,34 @@ function EditProposalModal({
   const [mensaje, setMensaje] = useState(proposal.descripcion);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
-  const [saved, setSaved] = useState(false);
+  const [noChanges, setNoChanges] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   const isAceptada = proposal.estado === ProposalStatus.ACEPTADA;
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    setSaved(false);
+    if (
+      Number(precio) === proposal.precioOferta &&
+      mensaje.trim() === proposal.descripcion.trim()
+    ) {
+      setNoChanges(true);
+      return;
+    }
+    setNoChanges(false);
+    setConfirmOpen(true);
+  };
+
+  const doSave = async () => {
+    setError('');
     setIsSubmitting(true);
     try {
       const updated = await updateProposal(proposal.id, Number(precio), mensaje);
-      setSaved(true);
       onSaved(updated);
     } catch (err: any) {
       setError(err.message || 'Error al guardar los cambios');
+      setConfirmOpen(false);
     } finally {
       setIsSubmitting(false);
     }
@@ -448,6 +473,41 @@ function EditProposalModal({
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
       <div className="relative w-full sm:max-w-md bg-white rounded-t-3xl sm:rounded-2xl shadow-xl p-6 max-h-[92vh] overflow-y-auto">
+
+        {/* Overlay de confirmación */}
+        {confirmOpen && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/95 rounded-t-3xl sm:rounded-2xl px-6">
+            <div className="text-center space-y-4 w-full">
+              <div className="w-12 h-12 rounded-full bg-amber-50 border border-amber-200 flex items-center justify-center mx-auto">
+                <AlertTriangle size={22} className="text-amber-500" />
+              </div>
+              <div>
+                <p className="font-semibold text-base">¿Estás seguro de que querés editar tu oferta?</p>
+                <p className="text-sm text-gray-500 mt-1">Se notificará al cliente.</p>
+              </div>
+              <div className="flex gap-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => setConfirmOpen(false)}
+                  disabled={isSubmitting}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  type="button"
+                  className="flex-1"
+                  isLoading={isSubmitting}
+                  onClick={doSave}
+                >
+                  Confirmar
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="flex items-start justify-between mb-5">
           <div>
             <h3 className="text-lg font-bold">Mi Propuesta</h3>
@@ -495,10 +555,9 @@ function EditProposalModal({
                 {error}
               </div>
             )}
-            {saved && (
-              <div className="rounded-lg bg-teal-50 px-4 py-3 text-sm text-teal-700 border border-teal-200 flex items-center gap-2">
-                <CheckCircle size={16} />
-                Cambios guardados
+            {noChanges && (
+              <div className="rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-700 border border-amber-200">
+                No realizaste ningún cambio en tu oferta.
               </div>
             )}
             <div>
@@ -510,7 +569,7 @@ function EditProposalModal({
                 required
                 min={1}
                 value={precio}
-                onChange={(e) => { setPrecio(e.target.value); setSaved(false); }}
+                onChange={(e) => { setPrecio(e.target.value); setNoChanges(false); }}
                 className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-teal-600 focus:border-transparent"
               />
             </div>
@@ -521,7 +580,7 @@ function EditProposalModal({
               <textarea
                 required
                 value={mensaje}
-                onChange={(e) => { setMensaje(e.target.value); setSaved(false); }}
+                onChange={(e) => { setMensaje(e.target.value); setNoChanges(false); }}
                 className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-teal-600 focus:border-transparent min-h-[110px]"
               />
             </div>
@@ -538,7 +597,6 @@ function EditProposalModal({
               <Button
                 type="submit"
                 className="flex-1"
-                isLoading={isSubmitting}
                 disabled={!precio || !mensaje}
               >
                 Guardar cambios
@@ -592,8 +650,11 @@ function ProposalCard({
 
   const isAceptada = proposal.estado === ProposalStatus.ACEPTADA;
   const isRechazada = proposal.estado === ProposalStatus.RECHAZADA;
-  const hasHistory =
-    proposal.versionHistory && proposal.versionHistory.length > 0;
+  const hasHistory = proposal.versionHistory && proposal.versionHistory.length > 0;
+
+  const latestUpdated = hasHistory
+    ? [...proposal.versionHistory!].sort((a, b) => b.version - a.version)[0].creadoEn
+    : null;
 
   return (
     <Card
@@ -615,21 +676,14 @@ function ProposalCard({
           />
           <div>
             <h4 className="font-bold">{nombreCompleto}</h4>
-            <div className="flex items-center gap-1.5">
-              <span
-                className={cn(
-                  'text-xs uppercase font-semibold',
-                  isAceptada ? 'text-teal-700' : 'text-gray-400',
-                )}
-              >
-                {isAceptada ? '✓ Aceptada' : isRechazada ? 'Rechazada' : 'Pendiente'}
-              </span>
-              {proposal.version != null && (
-                <span className="text-[10px] text-gray-400 font-medium bg-gray-100 px-1.5 py-0.5 rounded-full">
-                  v{proposal.version}
-                </span>
+            <span
+              className={cn(
+                'text-xs uppercase font-semibold',
+                isAceptada ? 'text-teal-700' : 'text-gray-400',
               )}
-            </div>
+            >
+              {isAceptada ? '✓ Aceptada' : isRechazada ? 'Rechazada' : 'Pendiente'}
+            </span>
           </div>
         </div>
         <div className="text-right">
@@ -637,10 +691,21 @@ function ProposalCard({
           <span className="text-base font-bold text-gray-900">
             {formatCurrency(proposal.precioOferta)}
           </span>
+          {proposal.version != null && (
+            <span className="text-[10px] font-semibold text-teal-600 bg-teal-50 px-1.5 py-0.5 rounded-full block mt-1">
+              Propuesta v{proposal.version}
+            </span>
+          )}
         </div>
       </div>
 
-      <p className="text-sm text-gray-600 mb-4 italic">"{proposal.descripcion}"</p>
+      <p className="text-sm text-gray-600 mb-2 italic">"{proposal.descripcion}"</p>
+
+      {latestUpdated && (
+        <p className="text-[11px] text-gray-400 mb-4">
+          Última actualización: {formatDateTime(latestUpdated)}
+        </p>
+      )}
 
       {acceptError && <p className="text-xs text-red-600 mb-3">{acceptError}</p>}
 
@@ -722,7 +787,7 @@ function VersionHistoryAccordion({
                   <span className="font-bold text-teal-600 uppercase text-[10px]">
                     v{v.version}
                   </span>
-                  <span className="text-gray-400 text-[10px]">{formatDate(v.creadoEn)}</span>
+                  <span className="text-gray-400 text-[10px]">{formatDateTime(v.creadoEn)}</span>
                 </div>
                 <div className="font-semibold text-gray-900">{formatCurrency(v.precio)}</div>
                 <div className="text-gray-500 italic mt-0.5">"{v.mensaje}"</div>

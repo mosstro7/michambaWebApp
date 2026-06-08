@@ -13,6 +13,16 @@ export function formatDate(date: string | Date) {
   }).format(new Date(date));
 }
 
+export function formatDateTime(date: string | Date) {
+  return new Intl.DateTimeFormat('es-AR', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date(date));
+}
+
 export function formatCurrency(amount: number) {
   const n = new Intl.NumberFormat('es-AR', {
     minimumFractionDigits: 0,

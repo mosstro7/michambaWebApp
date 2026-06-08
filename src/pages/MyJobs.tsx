@@ -165,7 +165,7 @@ function JobCard({ job }: { job: ProposalWithOrder }) {
   const nombreCliente = cliente ? `${cliente.nombre} ${cliente.apellido}`.trim() : null;
 
   return (
-    <Link to={`/order/${job.pedidoId}`}>
+    <Link to={`/order/${job.pedidoId ?? job.pedido?.id}`}>
       <Card className="hover:border-teal-500 transition-colors">
         <div className="flex items-start gap-3">
           {cliente ? (
@@ -261,7 +261,7 @@ function ProposalRow({ proposal }: { proposal: ProposalWithOrder }) {
           size="sm"
           variant="outline"
           className="flex-shrink-0 rounded-lg"
-          onClick={() => navigate(`/order/${proposal.pedidoId}`)}
+          onClick={() => navigate(`/order/${proposal.pedidoId ?? proposal.pedido?.id}`)}
           rightIcon={<ArrowRight size={14} />}
         >
           Ver detalle
