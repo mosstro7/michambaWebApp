@@ -374,9 +374,10 @@ function ProposalModal({ orderId, onClose }: { orderId: string; onClose: () => v
               <input
                 type="number"
                 required
-                min={1}
+                min="0"
                 value={precio}
                 onChange={(e) => setPrecio(e.target.value)}
+                onKeyDown={(e) => ['e', 'E', '+', '-'].includes(e.key) && e.preventDefault()}
                 placeholder="Ej: 15000"
                 className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-teal-600 focus:border-transparent"
               />
@@ -567,9 +568,10 @@ function EditProposalModal({
               <input
                 type="number"
                 required
-                min={1}
+                min="0"
                 value={precio}
                 onChange={(e) => { setPrecio(e.target.value); setNoChanges(false); }}
+                onKeyDown={(e) => ['e', 'E', '+', '-'].includes(e.key) && e.preventDefault()}
                 className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-teal-600 focus:border-transparent"
               />
             </div>
@@ -654,7 +656,7 @@ function ProposalCard({
 
   const latestUpdated = hasHistory
     ? [...proposal.versionHistory!].sort((a, b) => b.version - a.version)[0].creadoEn
-    : null;
+    : proposal.createdAt;
 
   return (
     <Card
@@ -701,11 +703,9 @@ function ProposalCard({
 
       <p className="text-sm text-gray-600 mb-2 italic">"{proposal.descripcion}"</p>
 
-      {latestUpdated && (
-        <p className="text-[11px] text-gray-400 mb-4">
-          Última actualización: {formatDateTime(latestUpdated)}
-        </p>
-      )}
+      <p className="text-[11px] text-gray-400 mb-4">
+        Última actualización: {formatDateTime(latestUpdated)}
+      </p>
 
       {acceptError && <p className="text-xs text-red-600 mb-3">{acceptError}</p>}
 
