@@ -37,18 +37,23 @@ export function useChat(chatId: string | undefined) {
       }
       console.log('[useChat] new_message received:', message);
       setMessages((prev) => {
-        // Replace optimistic placeholder if sender + content match
+        // Match any temp placeholder with same content — only the current user
+        // creates temp messages, so remitenteId check is unnecessary and breaks
+        // when the server omits or serializes remitenteId differently.
         const tempIdx = prev.findIndex(
-          (m) =>
-            m.id.startsWith('temp-') &&
-            m.remitenteId === message.remitenteId &&
-            m.contenido === message.contenido,
+          (m) => m.id.startsWith('temp-') && m.contenido === message.contenido,
         );
         if (tempIdx !== -1) {
           const updated = [...prev];
-          updated[tempIdx] = message;
+          // Preserve remitenteId from optimistic if server omitted it, so the
+          // message keeps rendering on the correct side (RIGHT = own).
+          updated[tempIdx] = {
+            ...message,
+            remitenteId: message.remitenteId ?? prev[tempIdx].remitenteId,
+          };
           return updated;
         }
+        // No temp found → message from the other participant; dedup by real id.
         return prev.some((m) => m.id === message.id) ? prev : [...prev, message];
       });
     });
