@@ -17,8 +17,12 @@ export function useChat(chatId: string | undefined) {
     if (!chatId || !token) return;
 
     const socket = io(WS_URL, {
-      auth: { token: `Bearer ${token}` },
-      transports: ['websocket', 'polling'],
+      auth: { token },
+      transports: ['polling', 'websocket'],
+      reconnection: true,
+      reconnectionAttempts: Infinity,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
     });
     socketRef.current = socket;
 
