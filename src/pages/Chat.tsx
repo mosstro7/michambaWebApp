@@ -1,16 +1,19 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { getChatMessages } from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
 import { useChat } from '@/hooks/useChat';
 import { Button } from '@/components/ui/Button';
 import { ChevronLeft, Send, Wifi, WifiOff } from 'lucide-react';
-import { formatDate } from '@/utils';
+import { formatDateTime } from '@/utils';
 
 export function Chat() {
   const { id: chatId } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuthStore();
+
+  const tituloFromState = (location.state as any)?.titulo as string | undefined;
 
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -33,6 +36,13 @@ export function Chat() {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isTyping]);
+
+  // Derive the other participant's name from loaded messages
+  const interlocutor = useMemo(() => {
+    const other = messages.find((m) => m.remitenteId !== user?.id);
+    if (!other?.remitente) return null;
+    return `${other.remitente.nombre} ${other.remitente.apellido}`.trim();
+  }, [messages, user?.id]);
 
   const handleSend = (e: React.FormEvent) => {
     e.preventDefault();
@@ -79,8 +89,15 @@ export function Chat() {
         >
           <ChevronLeft size={24} />
         </button>
-        <h1 className="font-bold text-lg flex-1">Chat</h1>
-        <span className="flex items-center gap-1 text-xs">
+        <div className="flex-1 min-w-0">
+          <h1 className="font-bold text-base leading-tight truncate">
+            {interlocutor ?? tituloFromState ?? 'Chat'}
+          </h1>
+          {interlocutor && tituloFromState && (
+            <p className="text-xs text-gray-400 truncate">{tituloFromState}</p>
+          )}
+        </div>
+        <span className="flex items-center gap-1 text-xs flex-shrink-0">
           {connected ? (
             <Wifi size={14} className="text-teal-600" />
           ) : (
@@ -102,6 +119,7 @@ export function Chat() {
 
         {messages.map((msg) => {
           const isOwn = msg.remitenteId === user?.id;
+          const text = msg.contenido || msg.content || '';
           const senderName = msg.remitente
             ? `${msg.remitente.nombre} ${msg.remitente.apellido}`.trim()
             : isOwn
@@ -118,12 +136,12 @@ export function Chat() {
                   isOwn
                     ? 'bg-teal-700 text-white rounded-br-sm'
                     : 'bg-white border border-gray-200 text-gray-900 rounded-bl-sm shadow-sm'
-                }`}
+                } ${msg.id.startsWith('temp-') ? 'opacity-70' : ''}`}
               >
-                {msg.contenido}
+                {text}
               </div>
               <span className="text-[10px] text-gray-400 mt-1 mx-1">
-                {formatDate(msg.createdAt)}
+                {formatDateTime(msg.createdAt)}
               </span>
             </div>
           );

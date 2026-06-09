@@ -82,12 +82,13 @@ export function OrderDetail() {
 
   const goToChat = () => {
     setChatError('');
+    const navState = { titulo: order?.titulo };
     if (chatId) {
-      navigate(`/chats/${chatId}`);
+      navigate(`/chats/${chatId}`, { state: navState });
     } else if (id) {
       setLoadingChat(true);
       getChatByOrder(id)
-        .then((chat) => navigate(`/chats/${chat.id}`))
+        .then((chat) => navigate(`/chats/${chat.id}`, { state: navState }))
         .catch((err) => {
           console.error('[OrderDetail] goToChat getChatByOrder:', err);
           setLoadingChat(false);
@@ -109,13 +110,14 @@ export function OrderDetail() {
         })),
       };
     });
+    const navState = { titulo: order?.titulo };
     const resolvedChatId = result.chatId || result.chat?.id;
     if (resolvedChatId) {
-      navigate(`/chats/${resolvedChatId}`);
+      navigate(`/chats/${resolvedChatId}`, { state: navState });
     } else if (id) {
       setLoadingChat(true);
       getChatByOrder(id)
-        .then((chat) => navigate(`/chats/${chat.id}`))
+        .then((chat) => navigate(`/chats/${chat.id}`, { state: navState }))
         .catch(() => setLoadingChat(false));
     }
   };

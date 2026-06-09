@@ -31,6 +31,10 @@ export function useChat(chatId: string | undefined) {
 
     // Listeners registered BEFORE connect fires
     socket.on('new_message', (message: MessageWithSender) => {
+      // Normalize: gateway may send 'content' instead of 'contenido'
+      if (!message.contenido && message.content) {
+        message.contenido = message.content;
+      }
       console.log('[useChat] new_message received:', message);
       setMessages((prev) => {
         // Replace optimistic placeholder if sender + content match

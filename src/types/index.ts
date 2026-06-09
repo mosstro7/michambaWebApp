@@ -97,6 +97,7 @@ export interface Message {
   chatId: string;
   remitenteId: string;
   contenido: string;
+  content?: string; // some gateway implementations use this alias
   leido: boolean;
   createdAt: string;
 }
