@@ -90,7 +90,7 @@ export async function acceptProposal(id: string) {
     method: 'PATCH',
     headers: authHeaders(),
   });
-  return handleResponse<{ id: string; estado: string; pedidoId?: string; chatId?: string; chat?: { id: string } }>(res);
+  return handleResponse<{ id: string; estado: string; pedidoId?: string }>(res);
 }
 
 export async function updateProposal(id: string, precio: number, mensaje: string) {
@@ -104,6 +104,25 @@ export async function updateProposal(id: string, precio: number, mensaje: string
 
 export async function getChatByOrder(orderId: string) {
   const res = await fetch(`${BASE_URL}/chats/order/${orderId}`, { headers: authHeaders() });
+  return handleResponse<Chat[]>(res);
+}
+
+export async function getChats() {
+  const res = await fetch(`${BASE_URL}/chats`, { headers: authHeaders() });
+  return handleResponse<Chat[]>(res);
+}
+
+export async function getChat(chatId: string) {
+  const res = await fetch(`${BASE_URL}/chats/${chatId}`, { headers: authHeaders() });
+  return handleResponse<Chat>(res);
+}
+
+export async function createChat(pedidoId: string, especialistaId: string) {
+  const res = await fetch(`${BASE_URL}/chats`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify({ pedidoId, especialistaId }),
+  });
   return handleResponse<Chat>(res);
 }
 

@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { getChatMessages } from '@/lib/api';
+import { getChatMessages, getChat } from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
 import { useChat } from '@/hooks/useChat';
 import { Button } from '@/components/ui/Button';
 import { ChevronLeft, Send, Wifi, WifiOff } from 'lucide-react';
 import { formatDateTime } from '@/utils';
+import { Chat as ChatType, Role } from '@/types';
 
 export function Chat() {
   const { id: chatId } = useParams<{ id: string }>();
@@ -18,6 +19,7 @@ export function Chat() {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
+  const [chatInfo, setChatInfo] = useState<ChatType | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const typingDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -34,15 +36,26 @@ export function Chat() {
   }, [chatId, setMessages]);
 
   useEffect(() => {
+    if (!chatId) return;
+    getChat(chatId)
+      .then(setChatInfo)
+      .catch((err) => console.error('[Chat] getChat:', err));
+  }, [chatId]);
+
+  useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isTyping]);
 
-  // Derive the other participant's name from loaded messages
+  // Nombre del interlocutor: especialista si soy cliente, cliente si soy especialista
   const interlocutor = useMemo(() => {
+    const persona = user?.rol === Role.ESPECIALISTA ? chatInfo?.cliente : chatInfo?.especialista;
+    if (persona) return `${persona.nombre} ${persona.apellido}`.trim();
     const other = messages.find((m) => m.remitenteId !== user?.id);
     if (!other?.remitente) return null;
     return `${other.remitente.nombre} ${other.remitente.apellido}`.trim();
-  }, [messages, user?.id]);
+  }, [chatInfo, messages, user?.id, user?.rol]);
+
+  const tituloPedido = chatInfo?.pedido?.titulo ?? tituloFromState;
 
   const handleSend = (e: React.FormEvent) => {
     e.preventDefault();
@@ -91,10 +104,10 @@ export function Chat() {
         </button>
         <div className="flex-1 min-w-0">
           <h1 className="font-bold text-base leading-tight truncate">
-            {interlocutor ?? tituloFromState ?? 'Chat'}
+            {interlocutor ?? tituloPedido ?? 'Chat'}
           </h1>
-          {interlocutor && tituloFromState && (
-            <p className="text-xs text-gray-400 truncate">{tituloFromState}</p>
+          {interlocutor && tituloPedido && (
+            <p className="text-xs text-gray-400 truncate">{tituloPedido}</p>
           )}
         </div>
         <span className="flex items-center gap-1 text-xs flex-shrink-0">

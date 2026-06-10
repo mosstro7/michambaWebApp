@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { getMyProposals } from '@/lib/api';
-import { ProposalStatus, ProposalWithOrder } from '@/types';
-import { formatDate, formatCurrency, cn } from '@/utils';
-import { MapPin, Calendar, User, ArrowRight, Briefcase, FileText } from 'lucide-react';
+import { getMyProposals, getChats } from '@/lib/api';
+import { Chat, ProposalStatus, ProposalWithOrder } from '@/types';
+import { formatCurrency, cn } from '@/utils';
+import { MapPin, User, ArrowRight, Briefcase, FileText } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 import { Avatar } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
@@ -24,17 +24,18 @@ const STATUS_LABELS: Record<ProposalStatus, string> = {
 
 export function MyJobs() {
   const [activeTab, setActiveTab] = useState<Tab>('trabajos');
+  const [chats, setChats] = useState<Chat[]>([]);
   const [allProposals, setAllProposals] = useState<ProposalWithOrder[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
-    getMyProposals()
-      .then((data) => {
-        console.log('[MyJobs] /proposals/mine raw response:', JSON.stringify(data, null, 2));
-        setAllProposals(data);
+    Promise.all([getChats(), getMyProposals()])
+      .then(([chatsData, proposalsData]) => {
+        setChats(chatsData);
+        setAllProposals(proposalsData);
       })
-      .catch((err) => setError(err.message || 'Error al cargar propuestas'))
+      .catch((err) => setError(err.message || 'Error al cargar'))
       .finally(() => setIsLoading(false));
   }, []);
 
@@ -57,7 +58,6 @@ export function MyJobs() {
     );
   }
 
-  const jobs = allProposals.filter((p) => p.estado === ProposalStatus.ACEPTADA);
   const propuestas = allProposals;
 
   return (
@@ -73,7 +73,7 @@ export function MyJobs() {
           active={activeTab === 'trabajos'}
           icon={<Briefcase size={15} />}
           label="Mis Trabajos"
-          count={jobs.length}
+          count={chats.length}
           onClick={() => setActiveTab('trabajos')}
         />
         <TabButton
@@ -86,15 +86,15 @@ export function MyJobs() {
       </div>
 
       {activeTab === 'trabajos' ? (
-        jobs.length === 0 ? (
+        chats.length === 0 ? (
           <EmptyState
             message="No tenés trabajos activos"
-            detail="Aquí verás las propuestas cuando un cliente te elija."
+            detail="Aquí verás tus chats cuando un cliente te elija o te escriba."
           />
         ) : (
           <div className="space-y-3">
-            {jobs.map((job) => (
-              <JobCard key={job.id} job={job} />
+            {chats.map((chat) => (
+              <ChatJobCard key={chat.id} chat={chat} />
             ))}
           </div>
         )
@@ -160,16 +160,16 @@ function EmptyState({ message, detail }: { message: string; detail: string }) {
   );
 }
 
-// ─── Tarjeta de trabajo aceptado ─────────────────────────────────────────────
+// ─── Tarjeta de chat activo ──────────────────────────────────────────────────
 
-function JobCard({ job }: { job: ProposalWithOrder }) {
-  console.log('[JobCard] job object:', job);
-  const pedido = job.pedido;
-  const cliente = pedido?.cliente;
+function ChatJobCard({ chat }: { chat: Chat }) {
+  const pedido = chat.pedido;
+  const cliente = chat.cliente;
   const nombreCliente = cliente ? `${cliente.nombre} ${cliente.apellido}`.trim() : null;
+  const ultimoMensaje = chat.ultimoMensaje?.contenido || chat.ultimoMensaje?.content;
 
   return (
-    <Link to={`/order/${job.pedidoId ?? job.pedido?.id}`}>
+    <Link to={`/chats/${chat.id}`}>
       <Card className="hover:border-teal-500 transition-colors">
         <div className="flex items-start gap-3">
           {cliente ? (
@@ -187,32 +187,12 @@ function JobCard({ job }: { job: ProposalWithOrder }) {
             ) : (
               <p className="text-sm text-gray-400 italic">Cliente</p>
             )}
-            <div className="flex items-center gap-3 mt-1.5 text-xs text-gray-400">
-              {pedido?.barrio && (
-                <span className="flex items-center gap-1">
-                  <MapPin size={11} />
-                  {pedido.barrio}
-                </span>
-              )}
-              <span className="flex items-center gap-1">
-                <Calendar size={11} />
-                {formatDate(job.createdAt)}
-              </span>
-            </div>
-          </div>
-
-          <div className="flex-shrink-0 text-right">
-            <span className="text-xs bg-teal-100 text-teal-700 font-bold px-2 py-1 rounded-full uppercase block mb-1">
-              Aceptada
-            </span>
-            <span className="text-sm font-bold text-gray-900">
-              {formatCurrency(job.precioOferta)}
-            </span>
+            <p className="text-sm text-gray-400 truncate mt-1">{ultimoMensaje || 'Sin mensajes aún'}</p>
           </div>
         </div>
 
         <div className="mt-3 pt-3 border-t border-gray-50 flex items-center justify-between text-sm text-gray-500">
-          <span>Ver detalles del pedido</span>
+          <span>Ir al chat</span>
           <ArrowRight size={16} className="text-teal-600" />
         </div>
       </Card>

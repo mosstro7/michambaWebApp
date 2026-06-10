@@ -5,6 +5,7 @@ import {
   createProposal,
   acceptProposal,
   getChatByOrder,
+  createChat,
   getMyProposals,
   updateProposal,
 } from '@/lib/api';
@@ -17,6 +18,7 @@ import {
   Order,
   Proposal,
   ProposalVersionEntry,
+  Chat,
 } from '@/types';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -47,8 +49,7 @@ export function OrderDetail() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
-  const [chatId, setChatId] = useState<string | null>(null);
-  const [loadingChat, setLoadingChat] = useState(false);
+  const [chats, setChats] = useState<Chat[]>([]);
   const [miPropuesta, setMiPropuesta] = useState<Proposal | null>(null);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editSuccess, setEditSuccess] = useState(false);
@@ -58,16 +59,16 @@ export function OrderDetail() {
     if (!id) return;
     setIsLoading(true);
     getOrder(id)
-      .then((data) => {
-        setOrder(data);
-        if (data.estado === OrderStatus.EN_PROGRESO) {
-          getChatByOrder(id)
-            .then((chat) => setChatId(chat.id))
-            .catch((err) => console.error('[OrderDetail] getChatByOrder al montar:', err));
-        }
-      })
+      .then((data) => setOrder(data))
       .catch((err) => setError(err.message || 'Error al cargar el pedido'))
       .finally(() => setIsLoading(false));
+  }, [id]);
+
+  useEffect(() => {
+    if (!id) return;
+    getChatByOrder(id)
+      .then(setChats)
+      .catch((err) => console.error('[OrderDetail] getChatByOrder al montar:', err));
   }, [id]);
 
   useEffect(() => {
@@ -80,46 +81,44 @@ export function OrderDetail() {
       .catch((err) => console.error('[OrderDetail] Error /proposals/mine:', err));
   }, [id, isEspecialista]);
 
+  // ESPECIALISTA: chat propio para este pedido (creado por el cliente)
+  const miChat = chats.find(
+    (c) => c.especialistaId === user?.id || c.especialista?.id === user?.id,
+  );
+
   const goToChat = () => {
     setChatError('');
     const navState = { titulo: order?.titulo };
-    if (chatId) {
-      navigate(`/chats/${chatId}`, { state: navState });
-    } else if (id) {
-      setLoadingChat(true);
-      getChatByOrder(id)
-        .then((chat) => navigate(`/chats/${chat.id}`, { state: navState }))
-        .catch((err) => {
-          console.error('[OrderDetail] goToChat getChatByOrder:', err);
-          setLoadingChat(false);
-          setChatError('No se pudo acceder al chat. Intentá de nuevo.');
-        });
+    if (miChat) {
+      navigate(`/chats/${miChat.id}`, { state: navState });
+    } else {
+      setChatError('No se pudo acceder al chat. Intentá de nuevo.');
     }
   };
 
   const handleAcceptProposal = async (proposalId: string) => {
-    const result = await acceptProposal(proposalId);
-    setOrder((prev) => {
-      if (!prev) return prev;
-      return {
-        ...prev,
-        estado: OrderStatus.EN_PROGRESO,
-        propuestas: prev.propuestas?.map((p) => ({
-          ...p,
-          estado: p.id === proposalId ? ProposalStatus.ACEPTADA : ProposalStatus.RECHAZADA,
-        })),
-      };
-    });
-    const navState = { titulo: order?.titulo };
-    const resolvedChatId = result.chatId || result.chat?.id;
-    if (resolvedChatId) {
-      navigate(`/chats/${resolvedChatId}`, { state: navState });
-    } else if (id) {
-      setLoadingChat(true);
-      getChatByOrder(id)
-        .then((chat) => navigate(`/chats/${chat.id}`, { state: navState }))
-        .catch(() => setLoadingChat(false));
+    await acceptProposal(proposalId);
+    if (id) {
+      const updated = await getOrder(id);
+      setOrder(updated);
     }
+  };
+
+  // CLIENTE: iniciar o ir al chat con un especialista de una propuesta
+  const handleChatWithSpecialist = async (proposal: Proposal) => {
+    setChatError('');
+    const navState = { titulo: order?.titulo };
+    const existing = chats.find(
+      (c) => c.especialistaId === proposal.especialistaId || c.especialista?.id === proposal.especialistaId,
+    );
+    if (existing) {
+      navigate(`/chats/${existing.id}`, { state: navState });
+      return;
+    }
+    if (!id) return;
+    const chat = await createChat(id, proposal.especialistaId);
+    setChats((prev) => [...prev, chat]);
+    navigate(`/chats/${chat.id}`, { state: navState });
   };
 
   if (isLoading) {
@@ -192,8 +191,13 @@ export function OrderDetail() {
                   key={proposal.id}
                   proposal={proposal}
                   canAccept={order.estado === OrderStatus.ABIERTO}
+                  existingChat={chats.find(
+                    (c) =>
+                      c.especialistaId === proposal.especialistaId ||
+                      c.especialista?.id === proposal.especialistaId,
+                  )}
                   onAccept={() => handleAcceptProposal(proposal.id)}
-                  onGoToChat={goToChat}
+                  onChat={() => handleChatWithSpecialist(proposal)}
                 />
               ))}
             </div>
@@ -267,8 +271,6 @@ export function OrderDetail() {
                   <Button
                     className="w-full"
                     leftIcon={<MessageCircle size={18} />}
-                    isLoading={loadingChat}
-                    disabled={loadingChat}
                     onClick={goToChat}
                   >
                     Ir al Chat
@@ -624,16 +626,20 @@ function EditProposalModal({
 function ProposalCard({
   proposal,
   canAccept,
+  existingChat,
   onAccept,
-  onGoToChat,
+  onChat,
 }: {
   proposal: Proposal;
   canAccept: boolean;
+  existingChat?: Chat;
   onAccept: () => Promise<void>;
-  onGoToChat: () => void;
+  onChat: () => Promise<void>;
 }) {
   const [isAccepting, setIsAccepting] = useState(false);
   const [acceptError, setAcceptError] = useState('');
+  const [isStartingChat, setIsStartingChat] = useState(false);
+  const [chatError, setChatError] = useState('');
 
   const handleAccept = async () => {
     setAcceptError('');
@@ -644,6 +650,18 @@ function ProposalCard({
       setAcceptError(err.message || 'Error al aceptar la propuesta');
     } finally {
       setIsAccepting(false);
+    }
+  };
+
+  const handleChat = async () => {
+    setChatError('');
+    setIsStartingChat(true);
+    try {
+      await onChat();
+    } catch (err: any) {
+      setChatError(err.message || 'No se pudo iniciar el chat');
+    } finally {
+      setIsStartingChat(false);
     }
   };
 
@@ -710,29 +728,34 @@ function ProposalCard({
       </p>
 
       {acceptError && <p className="text-xs text-red-600 mb-3">{acceptError}</p>}
+      {chatError && <p className="text-xs text-red-600 mb-3">{chatError}</p>}
 
-      {!isAceptada && !isRechazada && (
-        <Button
-          variant="primary"
-          size="sm"
-          className="w-full rounded-lg"
-          isLoading={isAccepting}
-          disabled={!canAccept || isAccepting}
-          onClick={handleAccept}
-        >
-          Aceptar propuesta
-        </Button>
-      )}
-
-      {isAceptada && (
-        <Button
-          size="sm"
-          className="w-full rounded-lg"
-          leftIcon={<MessageCircle size={16} />}
-          onClick={onGoToChat}
-        >
-          Ir al Chat
-        </Button>
+      {!isRechazada && (
+        <div className="flex gap-2">
+          {!isAceptada && (
+            <Button
+              variant="primary"
+              size="sm"
+              className="flex-1 rounded-lg"
+              isLoading={isAccepting}
+              disabled={!canAccept || isAccepting}
+              onClick={handleAccept}
+            >
+              Aceptar propuesta
+            </Button>
+          )}
+          <Button
+            variant={isAceptada ? 'primary' : 'outline'}
+            size="sm"
+            className="flex-1 rounded-lg"
+            leftIcon={<MessageCircle size={16} />}
+            isLoading={isStartingChat}
+            disabled={isStartingChat}
+            onClick={handleChat}
+          >
+            {existingChat ? 'Ir al Chat' : 'Iniciar chat'}
+          </Button>
+        </div>
       )}
 
       {hasHistory && (
