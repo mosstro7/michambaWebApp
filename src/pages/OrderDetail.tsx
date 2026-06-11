@@ -38,6 +38,12 @@ import { Avatar } from '@/components/ui/Avatar';
 
 type OrderWithProposals = Order & { propuestas?: Proposal[] };
 
+// El backend a veces incluye el id del especialista solo dentro de la
+// relación `especialista`, sin poblar `especialistaId` en la propuesta.
+function getEspecialistaId(proposal: Proposal): string {
+  return proposal.especialista?.id ?? proposal.especialistaId;
+}
+
 export function OrderDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -108,15 +114,16 @@ export function OrderDetail() {
   const handleChatWithSpecialist = async (proposal: Proposal) => {
     setChatError('');
     const navState = { titulo: order?.titulo };
+    const especialistaId = getEspecialistaId(proposal);
     const existing = chats.find(
-      (c) => c.especialistaId === proposal.especialistaId || c.especialista?.id === proposal.especialistaId,
+      (c) => c.especialistaId === especialistaId || c.especialista?.id === especialistaId,
     );
     if (existing) {
       navigate(`/chats/${existing.id}`, { state: navState });
       return;
     }
     if (!id) return;
-    const chat = await createChat(id, proposal.especialistaId);
+    const chat = await createChat(id, especialistaId);
     setChats((prev) => [...prev, chat]);
     navigate(`/chats/${chat.id}`, { state: navState });
   };
@@ -193,8 +200,8 @@ export function OrderDetail() {
                   canAccept={order.estado === OrderStatus.ABIERTO}
                   existingChat={chats.find(
                     (c) =>
-                      c.especialistaId === proposal.especialistaId ||
-                      c.especialista?.id === proposal.especialistaId,
+                      c.especialistaId === getEspecialistaId(proposal) ||
+                      c.especialista?.id === getEspecialistaId(proposal),
                   )}
                   onAccept={() => handleAcceptProposal(proposal.id)}
                   onChat={() => handleChatWithSpecialist(proposal)}
@@ -668,7 +675,7 @@ function ProposalCard({
   const especialista = proposal.especialista;
   const nombreCompleto = especialista
     ? `${especialista.nombre} ${especialista.apellido}`.trim()
-    : `Especialista #${proposal.especialistaId.slice(0, 6)}`;
+    : `Especialista #${getEspecialistaId(proposal).slice(0, 6)}`;
 
   const isAceptada = proposal.estado === ProposalStatus.ACEPTADA;
   const isRechazada = proposal.estado === ProposalStatus.RECHAZADA;
