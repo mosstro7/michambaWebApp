@@ -14,12 +14,14 @@ const STATUS_STYLES: Record<ProposalStatus, string> = {
   [ProposalStatus.ACEPTADA]: 'bg-teal-100 text-teal-700',
   [ProposalStatus.PENDIENTE]: 'bg-yellow-100 text-yellow-700',
   [ProposalStatus.RECHAZADA]: 'bg-red-100 text-red-600',
+  [ProposalStatus.RETIRADA]: 'bg-gray-200 text-gray-600',
 };
 
 const STATUS_LABELS: Record<ProposalStatus, string> = {
   [ProposalStatus.ACEPTADA]: 'Aceptada',
   [ProposalStatus.PENDIENTE]: 'Pendiente',
   [ProposalStatus.RECHAZADA]: 'Rechazada',
+  [ProposalStatus.RETIRADA]: 'Retirada',
 };
 
 export function MyJobs() {

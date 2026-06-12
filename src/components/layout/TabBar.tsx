@@ -38,7 +38,7 @@ export function TabBar() {
           className={({ isActive }) =>
             cn(
               'flex flex-col items-center justify-center w-full h-full space-y-1 transition-colors',
-              isActive ? 'text-blue-600' : 'text-gray-400',
+              isActive ? 'text-teal-700 font-bold' : 'text-gray-400',
             )
           }
         >

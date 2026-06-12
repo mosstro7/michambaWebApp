@@ -102,6 +102,29 @@ export async function updateProposal(id: string, precio: number, mensaje: string
   return handleResponse<Proposal>(res);
 }
 
+export async function updateProposalStatus(id: string, estado: string) {
+  const res = await fetch(`${BASE_URL}/proposals/${id}`, {
+    method: 'PATCH',
+    headers: authHeaders(),
+    body: JSON.stringify({ estado }),
+  });
+  return handleResponse<Proposal>(res);
+}
+
+export async function getProposalsByOrder(orderId: string) {
+  const res = await fetch(`${BASE_URL}/proposals?orderId=${orderId}`, { headers: authHeaders() });
+  return handleResponse<Proposal[]>(res);
+}
+
+export async function createReport(chatId: string, motivo: string) {
+  const res = await fetch(`${BASE_URL}/reports`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify({ chatId, motivo }),
+  });
+  return handleResponse<{ id: string }>(res);
+}
+
 export async function getChatByOrder(orderId: string) {
   const res = await fetch(`${BASE_URL}/chats/order/${orderId}`, { headers: authHeaders() });
   return handleResponse<Chat[]>(res);

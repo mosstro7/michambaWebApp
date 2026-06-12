@@ -19,7 +19,8 @@ export enum OrderStatus {
 export enum ProposalStatus {
   PENDIENTE = 'PENDIENTE',
   ACEPTADA = 'ACEPTADA',
-  RECHAZADA = 'RECHAZADA'
+  RECHAZADA = 'RECHAZADA',
+  RETIRADA = 'RETIRADA'
 }
 
 export interface User {

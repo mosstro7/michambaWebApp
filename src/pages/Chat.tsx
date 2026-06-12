@@ -1,12 +1,20 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { getChatMessages, getChat } from '@/lib/api';
+import {
+  getChatMessages,
+  getChat,
+  getProposalsByOrder,
+  acceptProposal,
+  updateProposalStatus,
+  createReport,
+} from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
 import { useChat } from '@/hooks/useChat';
 import { Button } from '@/components/ui/Button';
-import { ChevronLeft, Send, Wifi, WifiOff } from 'lucide-react';
-import { formatDateTime } from '@/utils';
-import { Chat as ChatType, Role } from '@/types';
+import { ConfirmModal, SuccessModal, FormModal } from '@/components/ui/Modal';
+import { ChevronLeft, Send, Wifi, WifiOff, Flag, ChevronDown, ChevronUp } from 'lucide-react';
+import { formatDateTime, formatCurrency, cn } from '@/utils';
+import { Chat as ChatType, Role, Proposal, ProposalStatus } from '@/types';
 
 export function Chat() {
   const { id: chatId } = useParams<{ id: string }>();
@@ -20,6 +28,9 @@ export function Chat() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [chatInfo, setChatInfo] = useState<ChatType | null>(null);
+  const [proposal, setProposal] = useState<Proposal | null>(null);
+  const [proposalLoading, setProposalLoading] = useState(true);
+  const [reportOpen, setReportOpen] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const typingDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -41,6 +52,25 @@ export function Chat() {
       .then(setChatInfo)
       .catch((err) => console.error('[Chat] getChat:', err));
   }, [chatId]);
+
+  const reloadProposal = useCallback(() => {
+    if (!chatInfo) return;
+    const especialistaId = chatInfo.especialistaId ?? chatInfo.especialista?.id;
+    setProposalLoading(true);
+    getProposalsByOrder(chatInfo.pedidoId)
+      .then((proposals) => {
+        const match = proposals.find(
+          (p) => p.especialistaId === especialistaId || p.especialista?.id === especialistaId,
+        );
+        setProposal(match ?? null);
+      })
+      .catch((err) => console.error('[Chat] getProposalsByOrder:', err))
+      .finally(() => setProposalLoading(false));
+  }, [chatInfo]);
+
+  useEffect(() => {
+    reloadProposal();
+  }, [reloadProposal]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -106,8 +136,10 @@ export function Chat() {
           <h1 className="font-bold text-base leading-tight truncate">
             {interlocutor ?? tituloPedido ?? 'Chat'}
           </h1>
-          {interlocutor && tituloPedido && (
-            <p className="text-xs text-gray-400 truncate">{tituloPedido}</p>
+          {tituloPedido && (
+            <p className="text-xs text-gray-400 truncate">
+              Propuesta activa para el pedido: {tituloPedido}
+            </p>
           )}
         </div>
         <span className="flex items-center gap-1 text-xs flex-shrink-0">
@@ -120,10 +152,22 @@ export function Chat() {
             {connected ? 'Conectado' : 'Reconectando...'}
           </span>
         </span>
+        <button
+          onClick={() => setReportOpen(true)}
+          className="p-1.5 text-gray-400 hover:text-red-600 transition-colors flex-shrink-0"
+          title="Reportar conversación"
+        >
+          <Flag size={18} />
+        </button>
       </div>
 
+      {/* Panel de propuesta activa */}
+      {!proposalLoading && proposal && (
+        <ProposalPanel proposal={proposal} userRole={user?.rol} onUpdated={reloadProposal} />
+      )}
+
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3 bg-gray-50">
+      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3 bg-gray-100 border-y border-gray-200 shadow-inner">
         {messages.length === 0 && !isLoading && (
           <p className="text-center text-gray-400 text-sm mt-10">
             No hay mensajes aún. ¡Empezá la conversación!
@@ -196,6 +240,253 @@ export function Chat() {
           <Send size={18} />
         </button>
       </form>
+
+      {reportOpen && chatId && (
+        <ReportModal chatId={chatId} onClose={() => setReportOpen(false)} />
+      )}
     </div>
+  );
+}
+
+// ─── Panel lateral / superior de propuesta activa ────────────────────────────
+
+const STATUS_BADGE: Record<string, { label: string; className: string }> = {
+  [ProposalStatus.ACEPTADA]: { label: 'Oferta aceptada', className: 'bg-green-100 text-green-700' },
+  [ProposalStatus.RECHAZADA]: { label: 'Oferta rechazada', className: 'bg-red-100 text-red-700' },
+  [ProposalStatus.RETIRADA]: { label: 'Propuesta retirada', className: 'bg-gray-200 text-gray-600' },
+};
+
+type ProposalAction = 'accept' | 'reject' | 'withdraw';
+
+function ProposalPanel({
+  proposal,
+  userRole,
+  onUpdated,
+}: {
+  proposal: Proposal;
+  userRole?: Role;
+  onUpdated: () => void;
+}) {
+  const [collapsed, setCollapsed] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<ProposalAction | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [actionError, setActionError] = useState('');
+
+  const isPendiente = proposal.estado === ProposalStatus.PENDIENTE;
+  const isCliente = userRole === Role.CLIENTE;
+  const isEspecialista = userRole === Role.ESPECIALISTA;
+  const badge = STATUS_BADGE[proposal.estado];
+
+  const runAction = async () => {
+    if (!confirmAction) return;
+    setActionError('');
+    setIsSubmitting(true);
+    try {
+      if (confirmAction === 'accept') {
+        await acceptProposal(proposal.id);
+        setSuccessMessage('Oferta aceptada');
+      } else if (confirmAction === 'reject') {
+        await updateProposalStatus(proposal.id, ProposalStatus.RECHAZADA);
+        setSuccessMessage('Oferta rechazada');
+      } else {
+        await updateProposalStatus(proposal.id, ProposalStatus.RETIRADA);
+        setSuccessMessage('Propuesta retirada');
+      }
+      setConfirmAction(null);
+    } catch (err: any) {
+      setActionError(err.message || 'No se pudo completar la acción');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const CONFIRM_TEXT: Record<ProposalAction, { title: string; description?: string; danger?: boolean; confirmLabel: string }> = {
+    accept: {
+      title: '¿Aceptar esta oferta?',
+      description: 'El pedido pasará a estado "En progreso" y se cerrará para los demás especialistas.',
+      confirmLabel: 'Aceptar oferta',
+    },
+    reject: {
+      title: '¿Rechazar esta oferta?',
+      description: 'El especialista será notificado del rechazo.',
+      danger: true,
+      confirmLabel: 'Rechazar oferta',
+    },
+    withdraw: {
+      title: '¿Estás seguro?',
+      description: 'Esta acción no se puede deshacer.',
+      danger: true,
+      confirmLabel: 'Retirar propuesta',
+    },
+  };
+
+  return (
+    <div className="border-b border-gray-100 bg-white px-4 py-3">
+      <button
+        onClick={() => setCollapsed((v) => !v)}
+        className="flex w-full items-center justify-between text-left"
+      >
+        <span className="text-sm font-bold text-gray-900">Propuesta activa</span>
+        {collapsed ? <ChevronDown size={18} className="text-gray-400" /> : <ChevronUp size={18} className="text-gray-400" />}
+      </button>
+
+      {!collapsed && (
+        <div className="mt-3 space-y-3">
+          {actionError && (
+            <div className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700 border border-red-200">
+              {actionError}
+            </div>
+          )}
+
+          <div className="flex items-center justify-between">
+            <span className="text-lg font-bold text-gray-900">
+              {formatCurrency(proposal.precioOferta)}
+            </span>
+            <div className="flex items-center gap-2">
+              {proposal.version != null && (
+                <span className="text-xs font-semibold text-teal-600 bg-teal-50 px-2.5 py-1 rounded-full">
+                  v{proposal.version}
+                </span>
+              )}
+              {badge && (
+                <span className={cn('text-xs font-semibold px-2.5 py-1 rounded-full', badge.className)}>
+                  {badge.label}
+                </span>
+              )}
+            </div>
+          </div>
+
+          <p className="text-sm text-gray-700 italic bg-gray-50 rounded-xl px-4 py-3 border border-gray-100 leading-relaxed">
+            "{proposal.descripcion}"
+          </p>
+
+          {isPendiente && isCliente && (
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => setConfirmAction('reject')}
+              >
+                Rechazar oferta
+              </Button>
+              <Button className="flex-1" onClick={() => setConfirmAction('accept')}>
+                Aceptar oferta
+              </Button>
+            </div>
+          )}
+
+          {isPendiente && isEspecialista && (
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={() => setConfirmAction('withdraw')}
+            >
+              Retirar propuesta
+            </Button>
+          )}
+        </div>
+      )}
+
+      {confirmAction && (
+        <ConfirmModal
+          title={CONFIRM_TEXT[confirmAction].title}
+          description={CONFIRM_TEXT[confirmAction].description}
+          confirmLabel={CONFIRM_TEXT[confirmAction].confirmLabel}
+          danger={CONFIRM_TEXT[confirmAction].danger}
+          isSubmitting={isSubmitting}
+          onConfirm={runAction}
+          onCancel={() => setConfirmAction(null)}
+        />
+      )}
+
+      {successMessage && (
+        <SuccessModal
+          title={successMessage}
+          onClose={() => {
+            setSuccessMessage(null);
+            onUpdated();
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+// ─── Reportar conversación ────────────────────────────────────────────────────
+
+function ReportModal({ chatId, onClose }: { chatId: string; onClose: () => void }) {
+  const [motivo, setMotivo] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!motivo.trim()) return;
+    setError('');
+    setIsSubmitting(true);
+    try {
+      await createReport(chatId, motivo.trim());
+      setSuccess(true);
+    } catch (err: any) {
+      setError(err.message || 'No se pudo enviar el reporte');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  if (success) {
+    return (
+      <SuccessModal
+        title="Reporte enviado"
+        description="El equipo de Mi Chamba revisará la conversación."
+        onClose={onClose}
+      />
+    );
+  }
+
+  return (
+    <FormModal title="Reportar conversación" onClose={onClose}>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {error && (
+          <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700 border border-red-200">
+            {error}
+          </div>
+        )}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Motivo del reporte
+          </label>
+          <textarea
+            required
+            value={motivo}
+            onChange={(e) => setMotivo(e.target.value)}
+            placeholder="Describí lo ocurrido en esta conversación..."
+            className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-teal-600 focus:border-transparent min-h-[120px]"
+          />
+        </div>
+        <div className="flex gap-3 pt-1">
+          <Button
+            type="button"
+            variant="outline"
+            className="flex-1"
+            onClick={onClose}
+            disabled={isSubmitting}
+          >
+            Cancelar
+          </Button>
+          <Button
+            type="submit"
+            variant="danger"
+            className="flex-1"
+            isLoading={isSubmitting}
+            disabled={!motivo.trim()}
+          >
+            Enviar reporte
+          </Button>
+        </div>
+      </form>
+    </FormModal>
   );
 }
