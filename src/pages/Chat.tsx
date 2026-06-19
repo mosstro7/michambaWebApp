@@ -55,9 +55,11 @@ export function Chat() {
 
   const reloadProposal = useCallback(() => {
     if (!chatInfo) return;
+    const pedidoId = chatInfo.pedidoId ?? chatInfo.pedido?.id;
     const especialistaId = chatInfo.especialistaId ?? chatInfo.especialista?.id;
+    if (!pedidoId) return;
     setProposalLoading(true);
-    getProposalsByOrder(chatInfo.pedidoId)
+    getProposalsByOrder(pedidoId)
       .then((proposals) => {
         const match = proposals.find(
           (p) => p.especialistaId === especialistaId || p.especialista?.id === especialistaId,

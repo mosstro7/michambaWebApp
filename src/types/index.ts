@@ -107,13 +107,14 @@ export interface MessageWithSender extends Message {
 
 export interface Chat {
   id: string;
-  pedidoId: string;
+  pedidoId?: string;
   especialistaId?: string;
   clienteId?: string;
   createdAt: string;
   pedido?: {
     id: string;
     titulo: string;
+    estado?: string;
   };
   cliente?: {
     id: string;
