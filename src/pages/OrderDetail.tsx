@@ -6,7 +6,6 @@ import {
   acceptProposal,
   getChatByOrder,
   createChat,
-  getMyProposals,
   updateProposal,
 } from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
@@ -78,14 +77,10 @@ export function OrderDetail() {
   }, [id]);
 
   useEffect(() => {
-    if (!id || !isEspecialista) return;
-    getMyProposals()
-      .then((proposals) => {
-        const mine = proposals.find((p) => p.pedido?.id === id) ?? null;
-        setMiPropuesta(mine);
-      })
-      .catch((err) => console.error('[OrderDetail] Error /proposals/mine:', err));
-  }, [id, isEspecialista]);
+    if (!order || !isEspecialista || !user?.id) return;
+    const mine = order.propuestas?.find((p) => p.especialistaId === user.id) ?? null;
+    setMiPropuesta(mine);
+  }, [order, isEspecialista, user?.id]);
 
   // ESPECIALISTA: chat propio para este pedido (creado por el cliente)
   const miChat = chats.find(
@@ -240,6 +235,10 @@ export function OrderDetail() {
             className={cn(
               miPropuesta.estado === ProposalStatus.ACEPTADA
                 ? 'border-teal-400 bg-teal-50/40'
+                : miPropuesta.estado === ProposalStatus.RECHAZADA
+                ? 'border-red-200 bg-red-50/20'
+                : miPropuesta.estado === ProposalStatus.RETIRADA
+                ? 'border-gray-200 bg-gray-50/60'
                 : '',
             )}
           >
@@ -247,6 +246,18 @@ export function OrderDetail() {
               <div className="flex items-center gap-2 text-teal-700 text-sm font-medium mb-4">
                 <CheckCircle size={16} />
                 Propuesta aceptada — no se puede modificar
+              </div>
+            )}
+            {miPropuesta.estado === ProposalStatus.RECHAZADA && (
+              <div className="flex items-center gap-2 text-red-700 text-sm font-medium mb-4">
+                <X size={16} />
+                Esta oferta fue rechazada por el cliente
+              </div>
+            )}
+            {miPropuesta.estado === ProposalStatus.RETIRADA && (
+              <div className="flex items-center gap-2 text-gray-500 text-sm font-medium mb-4">
+                <X size={16} />
+                Retiraste esta propuesta
               </div>
             )}
             <div className="space-y-3 mb-4">
@@ -286,6 +297,14 @@ export function OrderDetail() {
                     <p className="text-xs text-red-600 mt-2 text-center">{chatError}</p>
                   )}
                 </>
+              ) : miPropuesta.estado === ProposalStatus.RECHAZADA ? (
+                <p className="text-xs text-red-500 text-center">
+                  Esta oferta fue rechazada — ya no puede modificarse.
+                </p>
+              ) : miPropuesta.estado === ProposalStatus.RETIRADA ? (
+                <p className="text-xs text-gray-400 text-center">
+                  Retiraste esta propuesta — ya no puede modificarse.
+                </p>
               ) : (
                 <Button variant="outline" className="w-full" onClick={() => { setEditModalOpen(true); setEditSuccess(false); }}>
                   Editar propuesta
@@ -474,7 +493,11 @@ function EditProposalModal({
       const updated = await updateProposal(proposal.id, Number(precio), mensaje);
       onSaved(updated);
     } catch (err: any) {
-      setError(err.message || 'Error al guardar los cambios');
+      const msg =
+        err.status === 403
+          ? 'Esta oferta ya no puede modificarse (fue rechazada o retirada).'
+          : err.message || 'Error al guardar los cambios';
+      setError(msg);
       setConfirmOpen(false);
     } finally {
       setIsSubmitting(false);

@@ -13,8 +13,10 @@ function authHeaders(): HeadersInit {
 
 async function handleResponse<T>(res: Response): Promise<T> {
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ message: res.statusText }));
-    throw new Error(err.message || 'Error en la solicitud');
+    const body = await res.json().catch(() => ({ message: res.statusText }));
+    const error = new Error(body.message || `Error ${res.status}`) as Error & { status: number };
+    error.status = res.status;
+    throw error;
   }
   return res.json();
 }
