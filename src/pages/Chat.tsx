@@ -3,7 +3,6 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import {
   getChatMessages,
   getChat,
-  getProposalsByOrder,
   acceptProposal,
   updateProposalStatus,
   createReport,
@@ -14,7 +13,9 @@ import { Button } from '@/components/ui/Button';
 import { ConfirmModal, SuccessModal, FormModal } from '@/components/ui/Modal';
 import { ChevronLeft, Send, Wifi, WifiOff, Flag, FileText, X } from 'lucide-react';
 import { formatDateTime, formatCurrency, cn } from '@/utils';
-import { Chat as ChatType, Role, Proposal, ProposalStatus } from '@/types';
+import { Chat as ChatType, Role, ProposalStatus } from '@/types';
+
+type ChatProposal = NonNullable<ChatType['propuesta']>;
 
 export function Chat() {
   const { id: chatId } = useParams<{ id: string }>();
@@ -28,8 +29,6 @@ export function Chat() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [chatInfo, setChatInfo] = useState<ChatType | null>(null);
-  const [proposal, setProposal] = useState<Proposal | null>(null);
-  const [proposalLoading, setProposalLoading] = useState(true);
   const [reportOpen, setReportOpen] = useState(false);
   const [mobileProposalOpen, setMobileProposalOpen] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -54,26 +53,12 @@ export function Chat() {
       .catch((err) => console.error('[Chat] getChat:', err));
   }, [chatId]);
 
-  const reloadProposal = useCallback(() => {
-    if (!chatInfo) return;
-    const pedidoId = chatInfo.pedidoId ?? chatInfo.pedido?.id;
-    const especialistaId = chatInfo.especialistaId ?? chatInfo.especialista?.id;
-    if (!pedidoId) return;
-    setProposalLoading(true);
-    getProposalsByOrder(pedidoId)
-      .then((proposals) => {
-        const match = proposals.find(
-          (p) => p.especialistaId === especialistaId || p.especialista?.id === especialistaId,
-        );
-        setProposal(match ?? null);
-      })
-      .catch((err) => console.error('[Chat] getProposalsByOrder:', err))
-      .finally(() => setProposalLoading(false));
-  }, [chatInfo]);
-
-  useEffect(() => {
-    reloadProposal();
-  }, [reloadProposal]);
+  const reloadChat = useCallback(() => {
+    if (!chatId) return;
+    getChat(chatId)
+      .then(setChatInfo)
+      .catch((err) => console.error('[Chat] reloadChat:', err));
+  }, [chatId]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -88,6 +73,8 @@ export function Chat() {
   }, [chatInfo, messages, user?.id, user?.rol]);
 
   const tituloPedido = chatInfo?.pedido?.titulo ?? tituloFromState;
+  const proposal = chatInfo?.propuesta ?? null;
+  const hasProposal = proposal !== null;
 
   const handleSend = (e: React.FormEvent) => {
     e.preventDefault();
@@ -123,8 +110,6 @@ export function Chat() {
       </div>
     );
   }
-
-  const hasProposal = !proposalLoading && proposal;
 
   return (
     <div className="flex flex-col" style={{ height: 'calc(100dvh - 4rem)' }}>
@@ -188,7 +173,7 @@ export function Chat() {
               <ProposalPanelContent
                 proposal={proposal}
                 userRole={user?.rol}
-                onUpdated={reloadProposal}
+                onUpdated={reloadChat}
               />
             </div>
             <div className="p-4 border-t border-gray-100">
@@ -302,7 +287,7 @@ export function Chat() {
                 proposal={proposal}
                 userRole={user?.rol}
                 onUpdated={() => {
-                  reloadProposal();
+                  reloadChat();
                   setMobileProposalOpen(false);
                 }}
               />
@@ -365,7 +350,7 @@ function ProposalPanelContent({
   userRole,
   onUpdated,
 }: {
-  proposal: Proposal;
+  proposal: ChatProposal;
   userRole?: Role;
   onUpdated: () => void;
 }) {

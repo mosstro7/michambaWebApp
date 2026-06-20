@@ -111,6 +111,13 @@ export interface Chat {
   especialistaId?: string;
   clienteId?: string;
   createdAt: string;
+  propuesta?: {
+    id: string;
+    estado: ProposalStatus;
+    precioOferta: number;
+    descripcion: string;
+    version?: number;
+  } | null;
   pedido?: {
     id: string;
     titulo: string;
