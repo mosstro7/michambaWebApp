@@ -7,6 +7,7 @@ import {
   getChatByOrder,
   createChat,
   updateProposal,
+  updateProposalStatus,
 } from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
 import { CATEGORIES } from '@/data/mockData';
@@ -59,6 +60,9 @@ export function OrderDetail() {
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editSuccess, setEditSuccess] = useState(false);
   const [chatError, setChatError] = useState('');
+  const [withdrawConfirmOpen, setWithdrawConfirmOpen] = useState(false);
+  const [isWithdrawing, setIsWithdrawing] = useState(false);
+  const [withdrawError, setWithdrawError] = useState('');
 
   useEffect(() => {
     if (!id) return;
@@ -94,6 +98,21 @@ export function OrderDetail() {
       navigate(`/chats/${miChat.id}`, { state: navState });
     } else {
       setChatError('No se pudo acceder al chat. Intentá de nuevo.');
+    }
+  };
+
+  const handleWithdraw = async () => {
+    if (!miPropuesta) return;
+    setIsWithdrawing(true);
+    setWithdrawError('');
+    try {
+      const updated = await updateProposalStatus(miPropuesta.id, ProposalStatus.RETIRADA);
+      setMiPropuesta(updated);
+      setWithdrawConfirmOpen(false);
+    } catch (err: any) {
+      setWithdrawError(err.message || 'No se pudo retirar la propuesta');
+    } finally {
+      setIsWithdrawing(false);
     }
   };
 
@@ -302,13 +321,56 @@ export function OrderDetail() {
                   Esta oferta fue rechazada — ya no puede modificarse.
                 </p>
               ) : miPropuesta.estado === ProposalStatus.RETIRADA ? (
-                <p className="text-xs text-gray-400 text-center">
-                  Retiraste esta propuesta — ya no puede modificarse.
-                </p>
-              ) : (
-                <Button variant="outline" className="w-full" onClick={() => { setEditModalOpen(true); setEditSuccess(false); }}>
-                  Editar propuesta
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => { setEditModalOpen(true); setEditSuccess(false); }}
+                >
+                  Reactivar propuesta
                 </Button>
+              ) : withdrawConfirmOpen ? (
+                <div className="space-y-3">
+                  <p className="text-sm text-gray-700 text-center font-medium">
+                    ¿Estás seguro de que querés retirar tu propuesta?
+                  </p>
+                  {withdrawError && (
+                    <p className="text-xs text-red-600 text-center">{withdrawError}</p>
+                  )}
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      className="flex-1"
+                      onClick={() => setWithdrawConfirmOpen(false)}
+                      disabled={isWithdrawing}
+                    >
+                      Cancelar
+                    </Button>
+                    <Button
+                      className="flex-1 bg-red-600 hover:bg-red-700 border-red-600"
+                      isLoading={isWithdrawing}
+                      onClick={handleWithdraw}
+                    >
+                      Retirar
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    className="flex-1"
+                    onClick={() => { setEditModalOpen(true); setEditSuccess(false); }}
+                  >
+                    Editar propuesta
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="flex-1 border-red-200 text-red-600 hover:bg-red-50"
+                    onClick={() => { setWithdrawConfirmOpen(true); setWithdrawError(''); }}
+                  >
+                    Retirar
+                  </Button>
+                </div>
               )}
             </div>
           </Card>
@@ -702,6 +764,7 @@ function ProposalCard({
 
   const isAceptada = proposal.estado === ProposalStatus.ACEPTADA;
   const isRechazada = proposal.estado === ProposalStatus.RECHAZADA;
+  const isRetirada = proposal.estado === ProposalStatus.RETIRADA;
   const hasHistory = proposal.versionHistory && proposal.versionHistory.length > 0;
 
   const latestUpdated = hasHistory
@@ -716,6 +779,8 @@ function ProposalCard({
           ? 'border-teal-400 bg-teal-50/40'
           : isRechazada
           ? 'opacity-50'
+          : isRetirada
+          ? 'opacity-60 border-gray-200'
           : 'hover:border-teal-400',
       )}
     >
@@ -731,10 +796,10 @@ function ProposalCard({
             <span
               className={cn(
                 'text-xs uppercase font-semibold',
-                isAceptada ? 'text-teal-700' : 'text-gray-400',
+                isAceptada ? 'text-teal-700' : isRetirada ? 'text-gray-500' : 'text-gray-400',
               )}
             >
-              {isAceptada ? '✓ Aceptada' : isRechazada ? 'Rechazada' : 'Pendiente'}
+              {isAceptada ? '✓ Aceptada' : isRechazada ? 'Rechazada' : isRetirada ? 'Retirada' : 'Pendiente'}
             </span>
           </div>
         </div>
@@ -761,31 +826,39 @@ function ProposalCard({
       {chatError && <p className="text-xs text-red-600 mb-3">{chatError}</p>}
 
       {!isRechazada && (
-        <div className="flex gap-2">
-          {!isAceptada && (
+        <>
+          {isRetirada && (
+            <div className="flex items-center gap-2 text-gray-500 text-sm mb-3 bg-gray-50 rounded-lg px-3 py-2 border border-gray-100">
+              <X size={14} className="flex-shrink-0" />
+              El especialista retiró esta propuesta
+            </div>
+          )}
+          <div className="flex gap-2">
+            {!isAceptada && !isRetirada && (
+              <Button
+                variant="primary"
+                size="sm"
+                className="flex-1 rounded-lg"
+                isLoading={isAccepting}
+                disabled={!canAccept || isAccepting}
+                onClick={handleAccept}
+              >
+                Aceptar propuesta
+              </Button>
+            )}
             <Button
-              variant="primary"
+              variant={isAceptada ? 'primary' : 'outline'}
               size="sm"
               className="flex-1 rounded-lg"
-              isLoading={isAccepting}
-              disabled={!canAccept || isAccepting}
-              onClick={handleAccept}
+              leftIcon={<MessageCircle size={16} />}
+              isLoading={isStartingChat}
+              disabled={isStartingChat}
+              onClick={handleChat}
             >
-              Aceptar propuesta
+              {existingChat ? 'Ir al Chat' : 'Iniciar chat'}
             </Button>
-          )}
-          <Button
-            variant={isAceptada ? 'primary' : 'outline'}
-            size="sm"
-            className="flex-1 rounded-lg"
-            leftIcon={<MessageCircle size={16} />}
-            isLoading={isStartingChat}
-            disabled={isStartingChat}
-            onClick={handleChat}
-          >
-            {existingChat ? 'Ir al Chat' : 'Iniciar chat'}
-          </Button>
-        </div>
+          </div>
+        </>
       )}
 
       {hasHistory && (
