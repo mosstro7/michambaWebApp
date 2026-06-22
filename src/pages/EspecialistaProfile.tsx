@@ -70,13 +70,37 @@ export function EspecialistaProfile() {
       {/* Header */}
       <div className="bg-white rounded-2xl border border-gray-100 p-6 flex flex-col items-center text-center gap-4">
         <Avatar nombre={perfil.nombre} apellido={perfil.apellido} size="lg" />
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">
+        <div className="w-full">
+          <h1 className="text-2xl font-bold text-gray-900 text-center">
             {perfil.nombre} {perfil.apellido}
           </h1>
-          <span className="mt-1 inline-block text-xs font-semibold text-teal-700 bg-teal-50 px-2.5 py-0.5 rounded-full uppercase">
-            Especialista
-          </span>
+          <div className="flex justify-center mt-1">
+            <span className="text-xs font-semibold text-teal-700 bg-teal-50 px-2.5 py-0.5 rounded-full uppercase">
+              Especialista
+            </span>
+          </div>
+          {(perfil.especialidad || perfil.experiencia || perfil.descripcion) && (
+            <div className="mt-4 space-y-2 text-left">
+              {perfil.especialidad && (
+                <div>
+                  <p className="text-xs text-gray-400 uppercase font-bold tracking-wider">Especialidad</p>
+                  <p className="text-sm text-gray-700">{perfil.especialidad}</p>
+                </div>
+              )}
+              {perfil.experiencia && (
+                <div>
+                  <p className="text-xs text-gray-400 uppercase font-bold tracking-wider">Experiencia</p>
+                  <p className="text-sm text-gray-700">{perfil.experiencia}</p>
+                </div>
+              )}
+              {perfil.descripcion && (
+                <div>
+                  <p className="text-xs text-gray-400 uppercase font-bold tracking-wider">Descripción</p>
+                  <p className="text-sm text-gray-700 leading-relaxed">{perfil.descripcion}</p>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="flex items-center gap-8 pt-3 border-t border-gray-100 w-full justify-center">

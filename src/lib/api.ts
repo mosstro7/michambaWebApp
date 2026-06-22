@@ -223,10 +223,27 @@ export interface Calificacion {
   cliente: { nombre: string; apellido: string };
 }
 
+export interface Me {
+  id: string;
+  nombre: string;
+  apellido: string;
+  email: string;
+  telefono: string;
+  barrio: string;
+  rol: string;
+  verificado: boolean;
+  descripcion?: string;
+  especialidad?: string;
+  experiencia?: string;
+}
+
 export interface PerfilEspecialista {
   id: string;
   nombre: string;
   apellido: string;
+  descripcion?: string;
+  especialidad?: string;
+  experiencia?: string;
   totalTrabajosFinalizados: number;
   promedioPuntuacion: number | null;
   calificaciones: Calificacion[];
@@ -244,4 +261,24 @@ export async function finalizarPedido(id: string, puntuacion: number, comentario
 export async function getPerfilEspecialista(id: string) {
   const res = await fetch(`${BASE_URL}/especialistas/${id}/perfil`);
   return handleResponse<PerfilEspecialista>(res);
+}
+
+export async function getMe() {
+  const res = await fetch(`${BASE_URL}/usuarios/me`, { headers: authHeaders() });
+  return handleResponse<Me>(res);
+}
+
+export async function updateMe(body: {
+  telefono?: string;
+  barrio?: string;
+  descripcion?: string;
+  especialidad?: string;
+  experiencia?: string;
+}) {
+  const res = await fetch(`${BASE_URL}/usuarios/me`, {
+    method: 'PATCH',
+    headers: authHeaders(),
+    body: JSON.stringify(body),
+  });
+  return handleResponse<Omit<Me, 'telefono'>>(res);
 }
