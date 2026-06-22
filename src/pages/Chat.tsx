@@ -33,6 +33,7 @@ export function Chat() {
   const [chatInfo, setChatInfo] = useState<ChatType | null>(null);
   const [reportOpen, setReportOpen] = useState(false);
   const [mobileProposalOpen, setMobileProposalOpen] = useState(false);
+  const [localFinalizado, setLocalFinalizado] = useState(false);
   const [toastError, setToastError] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -91,11 +92,13 @@ export function Chat() {
     proposal?.estado === ProposalStatus.RECHAZADA ||
     proposal?.estado === ProposalStatus.RETIRADA ||
     orderEstado === OrderStatus.CANCELADO ||
-    orderEstado === OrderStatus.FINALIZADO;
+    orderEstado === OrderStatus.FINALIZADO ||
+    localFinalizado;
 
+  const especialistaId = chatInfo?.especialistaId ?? chatInfo?.especialista?.id;
   const especialistaProfileLink =
-    user?.rol === Role.CLIENTE
-      ? `/especialistas/${chatInfo?.especialistaId ?? chatInfo?.especialista?.id}`
+    user?.rol === Role.CLIENTE && especialistaId
+      ? `/especialistas/${especialistaId}`
       : null;
 
   const handleSend = (e: React.FormEvent) => {
@@ -144,7 +147,7 @@ export function Chat() {
           <ChevronLeft size={24} />
         </button>
         <div className="flex-1 min-w-0">
-          {especialistaProfileLink && chatInfo?.especialistaId ? (
+          {especialistaProfileLink ? (
             <Link
               to={especialistaProfileLink}
               className="font-bold text-base leading-tight truncate hover:text-teal-700 hover:underline transition-colors block"
@@ -206,6 +209,7 @@ export function Chat() {
                 pedido={chatInfo?.pedido}
                 userRole={user?.rol}
                 onUpdated={reloadChat}
+                onFinalizado={() => setLocalFinalizado(true)}
               />
             </div>
             <div className="p-4 border-t border-gray-100">
@@ -341,6 +345,7 @@ export function Chat() {
                   reloadChat();
                   setMobileProposalOpen(false);
                 }}
+                onFinalizado={() => setLocalFinalizado(true)}
               />
               <div className="pt-3 border-t border-gray-100">
                 <button
@@ -424,11 +429,13 @@ function ProposalPanelContent({
   pedido,
   userRole,
   onUpdated,
+  onFinalizado,
 }: {
   proposal: ChatProposal;
   pedido?: { id: string; titulo?: string; estado?: string };
   userRole?: Role;
   onUpdated: () => void;
+  onFinalizado?: () => void;
 }) {
   const [confirmAction, setConfirmAction] = useState<ProposalAction | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -438,6 +445,7 @@ function ProposalPanelContent({
   const [cancelMotivo, setCancelMotivo] = useState('');
   const [cancelSuccess, setCancelSuccess] = useState<{ title: string; description: string } | null>(null);
   const [localCancelled, setLocalCancelled] = useState(false);
+  const [localFinalizado, setLocalFinalizadoPanel] = useState(false);
   const [finalizarOpen, setFinalizarOpen] = useState(false);
   const [finalizarSuccess, setFinalizarSuccess] = useState(false);
 
@@ -494,9 +502,18 @@ function ProposalPanelContent({
   };
 
   const orderCancelled = localCancelled || pedido?.estado === OrderStatus.CANCELADO;
+  const orderFinalizado = localFinalizado || pedido?.estado === OrderStatus.FINALIZADO;
 
   return (
     <div className="space-y-4">
+      {orderFinalizado && (
+        <div className="rounded-xl bg-teal-600 px-4 py-3 text-center">
+          <p className="text-white font-bold uppercase tracking-wide text-xs">
+            Trabajo finalizado y calificado
+          </p>
+        </div>
+      )}
+
       {orderCancelled && (
         <div className="rounded-xl bg-red-600 px-4 py-3 text-center">
           <p className="text-white font-bold uppercase tracking-wide text-xs">
@@ -644,6 +661,8 @@ function ProposalPanelContent({
           onSuccess={() => {
             setFinalizarOpen(false);
             setFinalizarSuccess(true);
+            setLocalFinalizadoPanel(true);
+            onFinalizado?.();
           }}
         />
       )}
