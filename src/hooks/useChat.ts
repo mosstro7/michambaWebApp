@@ -5,7 +5,7 @@ import type { MessageWithSender } from '@/types';
 
 const WS_URL = import.meta.env.VITE_API_URL as string;
 
-export function useChat(chatId: string | undefined) {
+export function useChat(chatId: string | undefined, onSocketError?: (message: string) => void) {
   const { token, user } = useAuthStore();
   const socketRef = useRef<Socket | null>(null);
   const userRef = useRef(user);
@@ -79,6 +79,14 @@ export function useChat(chatId: string | undefined) {
 
     socket.on('connect_error', (err) => {
       console.error('[useChat] connect_error:', err.message);
+    });
+
+    socket.on('exception', (err: { message?: string; status?: string } | string) => {
+      const msg = typeof err === 'string' ? err : (err.message ?? 'Error al enviar el mensaje');
+      console.error('[useChat] exception:', msg);
+      onSocketError?.(msg);
+      // Remove optimistic temp messages — server rejected the send
+      setMessages((prev) => prev.filter((m) => !m.id.startsWith('temp-')));
     });
 
     return () => {

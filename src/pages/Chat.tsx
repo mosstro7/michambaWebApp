@@ -11,7 +11,7 @@ import { useAuthStore } from '@/store/authStore';
 import { useChat } from '@/hooks/useChat';
 import { Button } from '@/components/ui/Button';
 import { ConfirmModal, SuccessModal, FormModal } from '@/components/ui/Modal';
-import { ChevronLeft, Send, Wifi, WifiOff, Flag, FileText, X } from 'lucide-react';
+import { ChevronLeft, Send, Wifi, WifiOff, Flag, FileText, X, Lock } from 'lucide-react';
 import { formatDateTime, formatCurrency, cn } from '@/utils';
 import { Chat as ChatType, Role, ProposalStatus } from '@/types';
 
@@ -31,11 +31,14 @@ export function Chat() {
   const [chatInfo, setChatInfo] = useState<ChatType | null>(null);
   const [reportOpen, setReportOpen] = useState(false);
   const [mobileProposalOpen, setMobileProposalOpen] = useState(false);
+  const [toastError, setToastError] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const typingDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const { messages, setMessages, isTyping, connected, sendMessage, emitTyping } = useChat(chatId);
+  const handleSocketError = useCallback((msg: string) => setToastError(msg), []);
+
+  const { messages, setMessages, isTyping, connected, sendMessage, emitTyping } = useChat(chatId, handleSocketError);
 
   useEffect(() => {
     if (!chatId) return;
@@ -72,9 +75,16 @@ export function Chat() {
     return `${other.remitente.nombre} ${other.remitente.apellido}`.trim();
   }, [chatInfo, messages, user?.id, user?.rol]);
 
+  useEffect(() => {
+    if (!toastError) return;
+    const t = setTimeout(() => setToastError(null), 4000);
+    return () => clearTimeout(t);
+  }, [toastError]);
+
   const tituloPedido = chatInfo?.pedido?.titulo ?? tituloFromState;
   const proposal = chatInfo?.propuesta ?? null;
   const hasProposal = proposal !== null;
+  const isClosed = proposal?.estado === ProposalStatus.RECHAZADA;
 
   const handleSend = (e: React.FormEvent) => {
     e.preventDefault();
@@ -242,26 +252,46 @@ export function Chat() {
             <div ref={bottomRef} />
           </div>
 
-          <form
-            onSubmit={handleSend}
-            className="flex items-center gap-2 px-4 py-3 border-t border-gray-100 bg-white flex-shrink-0"
-          >
-            <input
-              ref={inputRef}
-              type="text"
-              value={input}
-              onChange={handleInputChange}
-              placeholder="Escribí un mensaje..."
-              className="flex-1 px-4 py-2.5 rounded-full border border-gray-300 focus:outline-none focus:ring-2 focus:ring-teal-600 focus:border-transparent text-sm"
-            />
-            <button
-              type="submit"
-              disabled={!input.trim() || !connected}
-              className="w-11 h-11 rounded-full bg-teal-700 text-white flex items-center justify-center disabled:opacity-40 hover:bg-teal-800 transition-colors flex-shrink-0"
+          {toastError && (
+            <div className="px-4 py-2.5 bg-red-50 border-t border-red-100 flex items-center justify-between gap-3 flex-shrink-0">
+              <p className="text-sm text-red-700">{toastError}</p>
+              <button onClick={() => setToastError(null)} className="text-red-400 hover:text-red-600 flex-shrink-0">
+                <X size={16} />
+              </button>
+            </div>
+          )}
+
+          {isClosed ? (
+            <div className="flex items-center gap-3 px-4 py-4 border-t border-gray-100 bg-gray-50 flex-shrink-0">
+              <Lock size={15} className="text-gray-400 flex-shrink-0" />
+              <p className="text-sm text-gray-500">
+                {user?.rol === Role.ESPECIALISTA
+                  ? 'Esta conversación fue cerrada — el pedido fue asignado a otro especialista.'
+                  : 'Esta conversación está cerrada — la propuesta fue rechazada.'}
+              </p>
+            </div>
+          ) : (
+            <form
+              onSubmit={handleSend}
+              className="flex items-center gap-2 px-4 py-3 border-t border-gray-100 bg-white flex-shrink-0"
             >
-              <Send size={18} />
-            </button>
-          </form>
+              <input
+                ref={inputRef}
+                type="text"
+                value={input}
+                onChange={handleInputChange}
+                placeholder="Escribí un mensaje..."
+                className="flex-1 px-4 py-2.5 rounded-full border border-gray-300 focus:outline-none focus:ring-2 focus:ring-teal-600 focus:border-transparent text-sm"
+              />
+              <button
+                type="submit"
+                disabled={!input.trim() || !connected}
+                className="w-11 h-11 rounded-full bg-teal-700 text-white flex items-center justify-center disabled:opacity-40 hover:bg-teal-800 transition-colors flex-shrink-0"
+              >
+                <Send size={18} />
+              </button>
+            </form>
+          )}
         </div>
       </div>
 
