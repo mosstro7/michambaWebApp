@@ -490,7 +490,7 @@ function ProposalModal({ orderId, onClose }: { orderId: string; onClose: () => v
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className="relative w-full sm:max-w-md bg-white rounded-t-3xl sm:rounded-2xl shadow-xl p-6 space-y-5">
+      <div className="relative w-full sm:max-w-md bg-white rounded-t-3xl sm:rounded-2xl shadow-xl p-6 space-y-5 max-h-[92vh] overflow-y-auto">
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-bold">Enviar Propuesta</h3>
           <button onClick={onClose} className="p-1 text-gray-400 hover:text-gray-600">
