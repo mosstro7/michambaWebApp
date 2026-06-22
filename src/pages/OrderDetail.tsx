@@ -124,6 +124,14 @@ export function OrderDetail() {
     }
   };
 
+  const handleRejectProposal = async (proposalId: string) => {
+    await updateProposalStatus(proposalId, ProposalStatus.RECHAZADA);
+    if (id) {
+      const updated = await getOrder(id);
+      setOrder(updated);
+    }
+  };
+
   // CLIENTE: iniciar o ir al chat con un especialista de una propuesta
   const handleChatWithSpecialist = async (proposal: Proposal) => {
     setChatError('');
@@ -218,6 +226,7 @@ export function OrderDetail() {
                       c.especialista?.id === getEspecialistaId(proposal),
                   )}
                   onAccept={() => handleAcceptProposal(proposal.id)}
+                  onReject={() => handleRejectProposal(proposal.id)}
                   onChat={() => handleChatWithSpecialist(proposal)}
                 />
               ))}
@@ -720,18 +729,23 @@ function ProposalCard({
   canAccept,
   existingChat,
   onAccept,
+  onReject,
   onChat,
 }: {
   proposal: Proposal;
   canAccept: boolean;
   existingChat?: Chat;
   onAccept: () => Promise<void>;
+  onReject: () => Promise<void>;
   onChat: () => Promise<void>;
 }) {
   const [isAccepting, setIsAccepting] = useState(false);
   const [acceptError, setAcceptError] = useState('');
   const [isStartingChat, setIsStartingChat] = useState(false);
   const [chatError, setChatError] = useState('');
+  const [rejectConfirmOpen, setRejectConfirmOpen] = useState(false);
+  const [isRejecting, setIsRejecting] = useState(false);
+  const [rejectError, setRejectError] = useState('');
 
   const handleAccept = async () => {
     setAcceptError('');
@@ -742,6 +756,17 @@ function ProposalCard({
       setAcceptError(err.message || 'Error al aceptar la propuesta');
     } finally {
       setIsAccepting(false);
+    }
+  };
+
+  const handleReject = async () => {
+    setRejectError('');
+    setIsRejecting(true);
+    try {
+      await onReject();
+    } catch (err: any) {
+      setRejectError(err.message || 'Error al rechazar la propuesta');
+      setIsRejecting(false);
     }
   };
 
@@ -765,7 +790,11 @@ function ProposalCard({
   const isAceptada = proposal.estado === ProposalStatus.ACEPTADA;
   const isRechazada = proposal.estado === ProposalStatus.RECHAZADA;
   const isRetirada = proposal.estado === ProposalStatus.RETIRADA;
+  const isPendiente = !isAceptada && !isRechazada && !isRetirada;
   const hasHistory = proposal.versionHistory && proposal.versionHistory.length > 0;
+
+  const displayVersion = proposal.version ??
+    (hasHistory ? Math.max(...proposal.versionHistory!.map((v) => v.version)) : null);
 
   const latestUpdated = hasHistory
     ? [...proposal.versionHistory!].sort((a, b) => b.version - a.version)[0].creadoEn
@@ -793,14 +822,21 @@ function ProposalCard({
           />
           <div>
             <h4 className="font-bold">{nombreCompleto}</h4>
-            <span
-              className={cn(
-                'text-xs uppercase font-semibold',
-                isAceptada ? 'text-teal-700' : isRetirada ? 'text-gray-500' : 'text-gray-400',
+            <div className="flex items-center gap-1.5 mt-0.5">
+              <span
+                className={cn(
+                  'text-xs uppercase font-semibold',
+                  isAceptada ? 'text-teal-700' : isRetirada ? 'text-gray-500' : 'text-gray-400',
+                )}
+              >
+                {isAceptada ? '✓ Aceptada' : isRechazada ? 'Rechazada' : isRetirada ? 'Retirada' : 'Pendiente'}
+              </span>
+              {displayVersion != null && (
+                <span className="text-[10px] font-semibold text-teal-600 bg-teal-50 px-1.5 py-0.5 rounded-full">
+                  v{displayVersion}
+                </span>
               )}
-            >
-              {isAceptada ? '✓ Aceptada' : isRechazada ? 'Rechazada' : isRetirada ? 'Retirada' : 'Pendiente'}
-            </span>
+            </div>
           </div>
         </div>
         <div className="text-right">
@@ -808,11 +844,6 @@ function ProposalCard({
           <span className="text-base font-bold text-gray-900">
             {formatCurrency(proposal.precioOferta)}
           </span>
-          {proposal.version != null && (
-            <span className="text-[10px] font-semibold text-teal-600 bg-teal-50 px-1.5 py-0.5 rounded-full block mt-1">
-              Propuesta v{proposal.version}
-            </span>
-          )}
         </div>
       </div>
 
@@ -833,18 +864,61 @@ function ProposalCard({
               El especialista retiró esta propuesta
             </div>
           )}
+
+          {isPendiente && rejectConfirmOpen ? (
+            <div className="space-y-2 mb-3">
+              <p className="text-sm text-gray-700 font-medium text-center">
+                ¿Rechazar la propuesta de {nombreCompleto}?
+              </p>
+              <p className="text-xs text-gray-400 text-center">
+                El especialista será notificado del rechazo.
+              </p>
+              {rejectError && <p className="text-xs text-red-600 text-center">{rejectError}</p>}
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex-1 rounded-lg"
+                  onClick={() => setRejectConfirmOpen(false)}
+                  disabled={isRejecting}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  size="sm"
+                  className="flex-1 rounded-lg bg-red-600 hover:bg-red-700 border-red-600"
+                  isLoading={isRejecting}
+                  onClick={handleReject}
+                >
+                  Confirmar rechazo
+                </Button>
+              </div>
+            </div>
+          ) : null}
+
           <div className="flex gap-2">
-            {!isAceptada && !isRetirada && (
-              <Button
-                variant="primary"
-                size="sm"
-                className="flex-1 rounded-lg"
-                isLoading={isAccepting}
-                disabled={!canAccept || isAccepting}
-                onClick={handleAccept}
-              >
-                Aceptar propuesta
-              </Button>
+            {isPendiente && (
+              <>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  className="flex-1 rounded-lg"
+                  isLoading={isAccepting}
+                  disabled={!canAccept || isAccepting || rejectConfirmOpen}
+                  onClick={handleAccept}
+                >
+                  Aceptar
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex-1 rounded-lg border-red-200 text-red-600 hover:bg-red-50"
+                  disabled={isAccepting || rejectConfirmOpen}
+                  onClick={() => { setRejectConfirmOpen(true); setRejectError(''); }}
+                >
+                  Rechazar
+                </Button>
+              </>
             )}
             <Button
               variant={isAceptada ? 'primary' : 'outline'}
