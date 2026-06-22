@@ -200,7 +200,11 @@ export function Chat() {
           <aside className="hidden md:flex flex-col w-[300px] min-w-[300px] border-r border-gray-200 bg-white overflow-y-auto">
             <div className="p-4 border-b border-gray-100">
               <h2 className="text-sm font-bold text-gray-700 uppercase tracking-wide">
-                Propuesta activa
+                {localFinalizado || orderEstado === OrderStatus.FINALIZADO
+                  ? 'Pedido finalizado'
+                  : orderEstado === OrderStatus.CANCELADO
+                  ? 'Pedido cancelado'
+                  : 'Propuesta activa'}
               </h2>
             </div>
             <div className="flex-1 p-4">
