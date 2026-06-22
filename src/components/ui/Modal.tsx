@@ -24,7 +24,7 @@ export function ConfirmModal({
   onCancel,
 }: ConfirmModalProps) {
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+    <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center">
       <div className="absolute inset-0 bg-black/50" onClick={onCancel} />
       <div className="relative w-full sm:max-w-sm bg-white rounded-t-3xl sm:rounded-2xl shadow-xl p-6 space-y-4 text-center">
         <div
@@ -72,7 +72,7 @@ interface SuccessModalProps {
 
 export function SuccessModal({ title, description, closeLabel = 'Cerrar', onClose }: SuccessModalProps) {
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+    <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
       <div className="relative w-full sm:max-w-sm bg-white rounded-t-3xl sm:rounded-2xl shadow-xl p-6 space-y-3 text-center">
         <CheckCircle size={48} className="text-teal-700 mx-auto" />
@@ -94,7 +94,7 @@ interface FormModalProps {
 
 export function FormModal({ title, children, onClose }: FormModalProps) {
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+    <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
       <div className="relative w-full sm:max-w-md bg-white rounded-t-3xl sm:rounded-2xl shadow-xl p-6 space-y-4 max-h-[92vh] overflow-y-auto">
         <div className="flex items-center justify-between">

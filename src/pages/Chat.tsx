@@ -325,7 +325,7 @@ export function Chat() {
 
       {/* Mobile proposal drawer */}
       {mobileProposalOpen && proposal && (
-        <div className="fixed inset-0 z-50 md:hidden flex flex-col justify-end">
+        <div className="fixed inset-0 z-[100] md:hidden flex flex-col justify-end">
           <div
             className="absolute inset-0 bg-black/40"
             onClick={() => setMobileProposalOpen(false)}
