@@ -87,6 +87,15 @@ function ClienteDashboard({ orders }: { orders: Order[] }) {
           </div>
         )}
       </div>
+
+      {/* FAB visible solo en mobile */}
+      <button
+        onClick={() => navigate('/new-order')}
+        className="fixed bottom-6 right-6 z-50 md:hidden w-14 h-14 bg-teal-600 hover:bg-teal-700 active:bg-teal-800 text-white rounded-full shadow-lg flex items-center justify-center transition-colors"
+        aria-label="Nuevo pedido"
+      >
+        <Plus size={24} />
+      </button>
     </div>
   );
 }
