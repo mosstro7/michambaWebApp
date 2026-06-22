@@ -418,6 +418,7 @@ function ProposalPanelContent({
   const [cancelOpen, setCancelOpen] = useState(false);
   const [cancelMotivo, setCancelMotivo] = useState('');
   const [cancelSuccess, setCancelSuccess] = useState<{ title: string; description: string } | null>(null);
+  const [localCancelled, setLocalCancelled] = useState(false);
 
   const isPendiente = proposal.estado === ProposalStatus.PENDIENTE;
   const isCliente = userRole === Role.CLIENTE;
@@ -455,6 +456,7 @@ function ProposalPanelContent({
     setIsSubmitting(true);
     try {
       await cancelOrder(pedido.id, cancelMotivo.trim());
+      setLocalCancelled(true);
       setCancelOpen(false);
       setCancelMotivo('');
       setCancelSuccess({
@@ -470,7 +472,7 @@ function ProposalPanelContent({
     }
   };
 
-  const orderCancelled = pedido?.estado === OrderStatus.CANCELADO;
+  const orderCancelled = localCancelled || pedido?.estado === OrderStatus.CANCELADO;
 
   return (
     <div className="space-y-4">
