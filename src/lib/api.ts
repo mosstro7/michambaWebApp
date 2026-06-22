@@ -183,3 +183,35 @@ export async function cancelOrder(orderId: string, motivo: string) {
   });
   return handleResponse<Order>(res);
 }
+
+export interface ReportUser {
+  id: string;
+  nombre: string;
+  apellido: string;
+  email: string;
+  rol: string;
+}
+
+export interface Report {
+  id: string;
+  motivo: string;
+  revisado: boolean;
+  creadoEn: string;
+  reportante: ReportUser;
+  reportado: ReportUser;
+  chat: { id: string };
+  pedido: { id: string; titulo: string };
+}
+
+export async function getReports() {
+  const res = await fetch(`${BASE_URL}/reports`, { headers: authHeaders() });
+  return handleResponse<Report[]>(res);
+}
+
+export async function toggleReportRevisado(id: string) {
+  const res = await fetch(`${BASE_URL}/reports/${id}/revisado`, {
+    method: 'PATCH',
+    headers: authHeaders(),
+  });
+  return handleResponse<Report>(res);
+}

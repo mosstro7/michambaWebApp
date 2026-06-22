@@ -17,7 +17,8 @@ const NAV_LINKS: Record<Role, { to: string; label: string; end?: boolean }[]> = 
     { to: '/profile', label: 'Perfil' },
   ],
   [Role.ADMIN]: [
-    { to: '/admin', label: 'Panel' },
+    { to: '/admin', label: 'Usuarios', end: true },
+    { to: '/admin/reports', label: 'Reportes' },
     { to: '/profile', label: 'Perfil' },
   ],
 };

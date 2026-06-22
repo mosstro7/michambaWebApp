@@ -13,6 +13,7 @@ import { NewOrder } from './pages/NewOrder';
 import { OrderDetail } from './pages/OrderDetail';
 import { Profile } from './pages/Profile';
 import { Admin } from './pages/Admin';
+import { AdminReports } from './pages/AdminReports';
 import { ContactArea } from './pages/ContactArea';
 import { MyJobs } from './pages/MyJobs';
 import { Chat } from './pages/Chat';
@@ -37,6 +38,12 @@ export default function App() {
           <Route path="/admin" element={
             <ProtectedRoute role={Role.ADMIN}>
               <Admin />
+            </ProtectedRoute>
+          } />
+
+          <Route path="/admin/reports" element={
+            <ProtectedRoute role={Role.ADMIN}>
+              <AdminReports />
             </ProtectedRoute>
           } />
 
