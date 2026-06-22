@@ -831,16 +831,18 @@ function ProposalCard({
               >
                 {isAceptada ? '✓ Aceptada' : isRechazada ? 'Rechazada' : isRetirada ? 'Retirada' : 'Pendiente'}
               </span>
-              {displayVersion != null && (
-                <span className="text-[10px] font-semibold text-teal-600 bg-teal-50 px-1.5 py-0.5 rounded-full">
-                  v{displayVersion}
-                </span>
-              )}
             </div>
           </div>
         </div>
         <div className="text-right">
-          <span className="text-[10px] text-gray-400 block uppercase font-bold">Oferta</span>
+          <div className="flex items-center justify-end gap-1.5">
+            <span className="text-[10px] text-gray-400 uppercase font-bold">Oferta</span>
+            {displayVersion != null && (
+              <span className="text-[10px] font-semibold text-teal-600 bg-teal-50 px-1.5 py-0.5 rounded-full">
+                v{displayVersion}
+              </span>
+            )}
+          </div>
           <span className="text-base font-bold text-gray-900">
             {formatCurrency(proposal.precioOferta)}
           </span>
