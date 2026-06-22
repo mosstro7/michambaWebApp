@@ -6,6 +6,7 @@ import {
   acceptProposal,
   updateProposalStatus,
   createReport,
+  cancelOrder,
 } from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
 import { useChat } from '@/hooks/useChat';
@@ -13,7 +14,7 @@ import { Button } from '@/components/ui/Button';
 import { ConfirmModal, SuccessModal, FormModal } from '@/components/ui/Modal';
 import { ChevronLeft, Send, Wifi, WifiOff, Flag, FileText, X, Lock } from 'lucide-react';
 import { formatDateTime, formatCurrency, cn } from '@/utils';
-import { Chat as ChatType, Role, ProposalStatus } from '@/types';
+import { Chat as ChatType, Role, ProposalStatus, OrderStatus } from '@/types';
 
 type ChatProposal = NonNullable<ChatType['propuesta']>;
 
@@ -84,7 +85,11 @@ export function Chat() {
   const tituloPedido = chatInfo?.pedido?.titulo ?? tituloFromState;
   const proposal = chatInfo?.propuesta ?? null;
   const hasProposal = proposal !== null;
-  const isClosed = proposal?.estado === ProposalStatus.RECHAZADA;
+  const orderEstado = chatInfo?.pedido?.estado;
+  const isClosed =
+    proposal?.estado === ProposalStatus.RECHAZADA ||
+    proposal?.estado === ProposalStatus.RETIRADA ||
+    orderEstado === OrderStatus.CANCELADO;
 
   const handleSend = (e: React.FormEvent) => {
     e.preventDefault();
@@ -182,6 +187,7 @@ export function Chat() {
             <div className="flex-1 p-4">
               <ProposalPanelContent
                 proposal={proposal}
+                pedido={chatInfo?.pedido}
                 userRole={user?.rol}
                 onUpdated={reloadChat}
               />
@@ -265,9 +271,7 @@ export function Chat() {
             <div className="flex items-center gap-3 px-4 py-4 border-t border-gray-100 bg-gray-50 flex-shrink-0">
               <Lock size={15} className="text-gray-400 flex-shrink-0" />
               <p className="text-sm text-gray-500">
-                {user?.rol === Role.ESPECIALISTA
-                  ? 'Esta conversación fue cerrada — el pedido fue asignado a otro especialista.'
-                  : 'Esta conversación está cerrada — la propuesta fue rechazada.'}
+                {getClosedBannerText(proposal?.estado, orderEstado, user?.rol)}
               </p>
             </div>
           ) : (
@@ -315,6 +319,7 @@ export function Chat() {
             <div className="p-4 space-y-4">
               <ProposalPanelContent
                 proposal={proposal}
+                pedido={chatInfo?.pedido}
                 userRole={user?.rol}
                 onUpdated={() => {
                   reloadChat();
@@ -343,6 +348,26 @@ export function Chat() {
       )}
     </div>
   );
+}
+
+function getClosedBannerText(
+  proposalEstado?: ProposalStatus,
+  orderEstado?: string,
+  userRole?: Role,
+): string {
+  if (orderEstado === OrderStatus.CANCELADO) {
+    return userRole === Role.CLIENTE
+      ? 'Cancelaste el trabajo — el pedido fue cerrado definitivamente.'
+      : 'El cliente canceló el trabajo — el pedido fue cerrado.';
+  }
+  if (proposalEstado === ProposalStatus.RETIRADA) {
+    return userRole === Role.ESPECIALISTA
+      ? 'Retiraste esta propuesta — la conversación fue cerrada.'
+      : 'El especialista retiró su propuesta — la conversación fue cerrada.';
+  }
+  return userRole === Role.ESPECIALISTA
+    ? 'Esta conversación fue cerrada — el pedido fue asignado a otro especialista.'
+    : 'Esta conversación está cerrada — la propuesta fue rechazada.';
 }
 
 // ─── Contenido del panel de propuesta (sidebar + drawer comparten este componente) ──
@@ -377,10 +402,12 @@ const CONFIRM_TEXT: Record<ProposalAction, { title: string; description?: string
 
 function ProposalPanelContent({
   proposal,
+  pedido,
   userRole,
   onUpdated,
 }: {
   proposal: ChatProposal;
+  pedido?: { id: string; titulo?: string; estado?: string };
   userRole?: Role;
   onUpdated: () => void;
 }) {
@@ -388,10 +415,14 @@ function ProposalPanelContent({
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [actionError, setActionError] = useState('');
+  const [cancelOpen, setCancelOpen] = useState(false);
+  const [cancelMotivo, setCancelMotivo] = useState('');
+  const [cancelSuccess, setCancelSuccess] = useState<{ title: string; description: string } | null>(null);
 
   const isPendiente = proposal.estado === ProposalStatus.PENDIENTE;
   const isCliente = userRole === Role.CLIENTE;
   const isEspecialista = userRole === Role.ESPECIALISTA;
+  const isEnProgreso = pedido?.estado === OrderStatus.EN_PROGRESO;
   const badge = STATUS_BADGE[proposal.estado];
 
   const runAction = async () => {
@@ -412,6 +443,28 @@ function ProposalPanelContent({
       setConfirmAction(null);
     } catch (err: any) {
       setActionError(err.message || 'No se pudo completar la acción');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleCancelWork = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!pedido?.id || !cancelMotivo.trim()) return;
+    setActionError('');
+    setIsSubmitting(true);
+    try {
+      await cancelOrder(pedido.id, cancelMotivo.trim());
+      setCancelOpen(false);
+      setCancelMotivo('');
+      setCancelSuccess({
+        title: 'Trabajo cancelado',
+        description: isCliente
+          ? 'El pedido fue cerrado definitivamente.'
+          : 'Tu propuesta fue retirada y el pedido volvió a estar disponible para otros especialistas.',
+      });
+    } catch (err: any) {
+      setActionError(err.message || 'No se pudo cancelar el trabajo');
     } finally {
       setIsSubmitting(false);
     }
@@ -470,6 +523,76 @@ function ProposalPanelContent({
         >
           Retirar propuesta
         </Button>
+      )}
+
+      {isEnProgreso && (
+        <Button
+          variant="danger"
+          className="w-full mt-1"
+          onClick={() => { setCancelOpen(true); setActionError(''); }}
+        >
+          Cancelar trabajo
+        </Button>
+      )}
+
+      {cancelOpen && (
+        <FormModal title="Cancelar trabajo" onClose={() => { setCancelOpen(false); setCancelMotivo(''); setActionError(''); }}>
+          <form onSubmit={handleCancelWork} className="space-y-4">
+            {actionError && (
+              <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700 border border-red-200">
+                {actionError}
+              </div>
+            )}
+            <p className="text-sm text-gray-600">
+              {isCliente
+                ? 'El pedido quedará cerrado definitivamente y no podrá reabrirse.'
+                : 'Tu propuesta quedará retirada y el pedido volverá a estar disponible para otros especialistas.'}
+            </p>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Motivo de cancelación
+              </label>
+              <textarea
+                required
+                value={cancelMotivo}
+                onChange={(e) => setCancelMotivo(e.target.value)}
+                placeholder="Explicá brevemente por qué cancelás..."
+                className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-teal-600 focus:border-transparent min-h-[100px] text-sm"
+              />
+            </div>
+            <div className="flex gap-3 pt-1">
+              <Button
+                type="button"
+                variant="outline"
+                className="flex-1"
+                disabled={isSubmitting}
+                onClick={() => { setCancelOpen(false); setCancelMotivo(''); setActionError(''); }}
+              >
+                Volver
+              </Button>
+              <Button
+                type="submit"
+                variant="danger"
+                className="flex-1"
+                isLoading={isSubmitting}
+                disabled={!cancelMotivo.trim()}
+              >
+                Confirmar cancelación
+              </Button>
+            </div>
+          </form>
+        </FormModal>
+      )}
+
+      {cancelSuccess && (
+        <SuccessModal
+          title={cancelSuccess.title}
+          description={cancelSuccess.description}
+          onClose={() => {
+            setCancelSuccess(null);
+            onUpdated();
+          }}
+        />
       )}
 
       {confirmAction && (

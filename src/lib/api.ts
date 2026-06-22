@@ -174,3 +174,12 @@ export async function getMyProposals() {
   const res = await fetch(`${BASE_URL}/proposals/mine`, { headers: authHeaders() });
   return handleResponse<ProposalWithOrder[]>(res);
 }
+
+export async function cancelOrder(orderId: string, motivo: string) {
+  const res = await fetch(`${BASE_URL}/orders/${orderId}/cancel`, {
+    method: 'PATCH',
+    headers: authHeaders(),
+    body: JSON.stringify({ motivo }),
+  });
+  return handleResponse<Order>(res);
+}
