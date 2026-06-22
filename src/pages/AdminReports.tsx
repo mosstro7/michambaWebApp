@@ -36,7 +36,7 @@ export function AdminReports() {
     setToggling(id);
     try {
       const updated = await toggleReportRevisado(id);
-      setReports((prev) => prev.map((r) => (r.id === id ? updated : r)));
+      setReports((prev) => prev.map((r) => (r.id === id ? { ...r, revisado: updated.revisado } : r)));
     } finally {
       setToggling(null);
     }
