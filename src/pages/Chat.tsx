@@ -470,8 +470,18 @@ function ProposalPanelContent({
     }
   };
 
+  const orderCancelled = pedido?.estado === OrderStatus.CANCELADO;
+
   return (
     <div className="space-y-4">
+      {orderCancelled && (
+        <div className="rounded-xl bg-red-600 px-4 py-3 text-center">
+          <p className="text-white font-bold uppercase tracking-wide text-xs">
+            Trabajo cancelado por el cliente
+          </p>
+        </div>
+      )}
+
       {actionError && (
         <div className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700 border border-red-200">
           {actionError}

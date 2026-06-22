@@ -219,6 +219,7 @@ export function OrderDetail() {
                 <ProposalCard
                   key={proposal.id}
                   proposal={proposal}
+                  orderEstado={order.estado}
                   canAccept={order.estado === OrderStatus.ABIERTO}
                   existingChat={chats.find(
                     (c) =>
@@ -270,6 +271,13 @@ export function OrderDetail() {
                 : '',
             )}
           >
+            {miPropuesta.estado === ProposalStatus.ACEPTADA && order.estado === OrderStatus.CANCELADO && (
+              <div className="rounded-xl bg-red-600 px-4 py-3 mb-4 text-center">
+                <p className="text-white font-bold uppercase tracking-wide text-xs">
+                  Trabajo cancelado por el cliente
+                </p>
+              </div>
+            )}
             {miPropuesta.estado === ProposalStatus.ACEPTADA && (
               <div className="flex items-center gap-2 text-teal-700 text-sm font-medium mb-4">
                 <CheckCircle size={16} />
@@ -726,6 +734,7 @@ function EditProposalModal({
 
 function ProposalCard({
   proposal,
+  orderEstado,
   canAccept,
   existingChat,
   onAccept,
@@ -733,6 +742,7 @@ function ProposalCard({
   onChat,
 }: {
   proposal: Proposal;
+  orderEstado?: OrderStatus;
   canAccept: boolean;
   existingChat?: Chat;
   onAccept: () => Promise<void>;
@@ -791,6 +801,7 @@ function ProposalCard({
   const isRechazada = proposal.estado === ProposalStatus.RECHAZADA;
   const isRetirada = proposal.estado === ProposalStatus.RETIRADA;
   const isPendiente = !isAceptada && !isRechazada && !isRetirada;
+  const isCancelled = isAceptada && orderEstado === OrderStatus.CANCELADO;
   const hasHistory = proposal.versionHistory && proposal.versionHistory.length > 0;
 
   const displayVersion = proposal.version ??
@@ -804,7 +815,9 @@ function ProposalCard({
     <Card
       className={cn(
         'transition-all',
-        isAceptada
+        isCancelled
+          ? 'border-red-200'
+          : isAceptada
           ? 'border-teal-400 bg-teal-50/40'
           : isRechazada
           ? 'opacity-50'
@@ -813,6 +826,14 @@ function ProposalCard({
           : 'hover:border-teal-400',
       )}
     >
+      {isCancelled && (
+        <div className="rounded-xl bg-red-600 px-4 py-3 mb-4 text-center">
+          <p className="text-white font-bold uppercase tracking-wide text-xs">
+            Trabajo cancelado por el cliente
+          </p>
+        </div>
+      )}
+
       <div className="flex items-start justify-between mb-4">
         <div className="flex items-center space-x-3">
           <Avatar

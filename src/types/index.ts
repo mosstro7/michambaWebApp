@@ -83,6 +83,7 @@ export interface ProposalWithOrder extends Proposal {
     id: string;
     titulo: string;
     barrio: string;
+    estado?: string;
     cliente?: { id: string; nombre: string; apellido: string };
   };
 }

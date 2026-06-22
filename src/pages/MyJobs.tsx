@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { getMyProposals, getChats } from '@/lib/api';
-import { Chat, ProposalStatus, ProposalWithOrder } from '@/types';
+import { Chat, ProposalStatus, OrderStatus, ProposalWithOrder } from '@/types';
 import { formatCurrency, cn } from '@/utils';
 import { MapPin, User, ArrowRight, Briefcase, FileText } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
@@ -205,12 +205,19 @@ function ChatJobCard({ chat }: { chat: Chat }) {
 // ─── Fila de propuesta enviada ───────────────────────────────────────────────
 
 function ProposalRow({ proposal }: { proposal: ProposalWithOrder }) {
-  console.log('[ProposalRow] proposal object:', proposal);
   const pedido = proposal.pedido;
   const navigate = useNavigate();
+  const isPedidoCancelado = pedido?.estado === OrderStatus.CANCELADO;
 
   return (
-    <Card className="hover:border-gray-300 transition-colors">
+    <Card className={cn('transition-colors', isPedidoCancelado ? 'border-red-200' : 'hover:border-gray-300')}>
+      {isPedidoCancelado && (
+        <div className="rounded-xl bg-red-600 px-4 py-3 mb-4 text-center">
+          <p className="text-white font-bold uppercase tracking-wide text-xs">
+            Trabajo cancelado por el cliente
+          </p>
+        </div>
+      )}
       <div className="flex items-start gap-3">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
