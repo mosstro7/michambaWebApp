@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   getOrder,
   createProposal,
@@ -9,6 +9,7 @@ import {
   updateProposal,
   updateProposalStatus,
 } from '@/lib/api';
+import { FinalizarModal } from '@/components/ui/FinalizarModal';
 import { useAuthStore } from '@/store/authStore';
 import { CATEGORIES } from '@/data/mockData';
 import {
@@ -63,6 +64,12 @@ export function OrderDetail() {
   const [withdrawConfirmOpen, setWithdrawConfirmOpen] = useState(false);
   const [isWithdrawing, setIsWithdrawing] = useState(false);
   const [withdrawError, setWithdrawError] = useState('');
+  const [finalizarOpen, setFinalizarOpen] = useState(false);
+
+  const handleFinalizarSuccess = () => {
+    setFinalizarOpen(false);
+    setOrder((prev) => prev ? { ...prev, estado: OrderStatus.FINALIZADO } : prev);
+  };
 
   useEffect(() => {
     if (!id) return;
@@ -203,6 +210,29 @@ export function OrderDetail() {
           {order.descripcion}
         </p>
       </Card>
+
+      {isOwner && order.estado === OrderStatus.EN_PROGRESO && (
+        <div className="rounded-2xl bg-blue-50 border border-blue-200 p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div>
+            <p className="font-semibold text-blue-900 text-sm">Trabajo en progreso</p>
+            <p className="text-xs text-blue-500">Cuando esté terminado, podés finalizarlo y calificar.</p>
+          </div>
+          <Button
+            size="sm"
+            className="flex-shrink-0 w-full sm:w-auto"
+            onClick={() => setFinalizarOpen(true)}
+          >
+            Finalizar trabajo
+          </Button>
+        </div>
+      )}
+
+      {isOwner && order.estado === OrderStatus.FINALIZADO && (
+        <div className="rounded-2xl bg-teal-50 border border-teal-200 px-4 py-3 flex items-center gap-3">
+          <CheckCircle size={18} className="text-teal-600 flex-shrink-0" />
+          <span className="text-sm font-semibold text-teal-800">Trabajo finalizado y calificado</span>
+        </div>
+      )}
 
       {/* CLIENTE: lista de propuestas recibidas */}
       {isOwner && (
@@ -405,6 +435,14 @@ export function OrderDetail() {
 
       {modalOpen && id && (
         <ProposalModal orderId={id} onClose={() => setModalOpen(false)} />
+      )}
+
+      {finalizarOpen && id && (
+        <FinalizarModal
+          orderId={id}
+          onClose={() => setFinalizarOpen(false)}
+          onSuccess={handleFinalizarSuccess}
+        />
       )}
 
       {editModalOpen && miPropuesta && (
@@ -842,7 +880,12 @@ function ProposalCard({
             size="md"
           />
           <div>
-            <h4 className="font-bold">{nombreCompleto}</h4>
+            <Link
+              to={`/especialistas/${getEspecialistaId(proposal)}`}
+              className="font-bold hover:text-teal-700 hover:underline transition-colors"
+            >
+              {nombreCompleto}
+            </Link>
             <div className="flex items-center gap-1.5 mt-0.5">
               <span
                 className={cn(

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
-import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
 import {
   getChatMessages,
   getChat,
@@ -12,6 +12,7 @@ import { useAuthStore } from '@/store/authStore';
 import { useChat } from '@/hooks/useChat';
 import { Button } from '@/components/ui/Button';
 import { ConfirmModal, SuccessModal, FormModal } from '@/components/ui/Modal';
+import { FinalizarModal } from '@/components/ui/FinalizarModal';
 import { ChevronLeft, Send, Wifi, WifiOff, Flag, FileText, X, Lock } from 'lucide-react';
 import { formatDateTime, formatCurrency, cn } from '@/utils';
 import { Chat as ChatType, Role, ProposalStatus, OrderStatus } from '@/types';
@@ -89,7 +90,13 @@ export function Chat() {
   const isClosed =
     proposal?.estado === ProposalStatus.RECHAZADA ||
     proposal?.estado === ProposalStatus.RETIRADA ||
-    orderEstado === OrderStatus.CANCELADO;
+    orderEstado === OrderStatus.CANCELADO ||
+    orderEstado === OrderStatus.FINALIZADO;
+
+  const especialistaProfileLink =
+    user?.rol === Role.CLIENTE
+      ? `/especialistas/${chatInfo?.especialistaId ?? chatInfo?.especialista?.id}`
+      : null;
 
   const handleSend = (e: React.FormEvent) => {
     e.preventDefault();
@@ -137,9 +144,18 @@ export function Chat() {
           <ChevronLeft size={24} />
         </button>
         <div className="flex-1 min-w-0">
-          <h1 className="font-bold text-base leading-tight truncate">
-            {interlocutor ?? tituloPedido ?? 'Chat'}
-          </h1>
+          {especialistaProfileLink && chatInfo?.especialistaId ? (
+            <Link
+              to={especialistaProfileLink}
+              className="font-bold text-base leading-tight truncate hover:text-teal-700 hover:underline transition-colors block"
+            >
+              {interlocutor ?? tituloPedido ?? 'Chat'}
+            </Link>
+          ) : (
+            <h1 className="font-bold text-base leading-tight truncate">
+              {interlocutor ?? tituloPedido ?? 'Chat'}
+            </h1>
+          )}
           {tituloPedido && (
             <p className="text-xs text-gray-400 truncate">{tituloPedido}</p>
           )}
@@ -355,6 +371,9 @@ function getClosedBannerText(
   orderEstado?: string,
   userRole?: Role,
 ): string {
+  if (orderEstado === OrderStatus.FINALIZADO) {
+    return '¡Trabajo finalizado! El pedido fue completado y calificado exitosamente.';
+  }
   if (orderEstado === OrderStatus.CANCELADO) {
     return userRole === Role.CLIENTE
       ? 'Cancelaste el trabajo — el pedido fue cerrado definitivamente.'
@@ -419,6 +438,8 @@ function ProposalPanelContent({
   const [cancelMotivo, setCancelMotivo] = useState('');
   const [cancelSuccess, setCancelSuccess] = useState<{ title: string; description: string } | null>(null);
   const [localCancelled, setLocalCancelled] = useState(false);
+  const [finalizarOpen, setFinalizarOpen] = useState(false);
+  const [finalizarSuccess, setFinalizarSuccess] = useState(false);
 
   const isPendiente = proposal.estado === ProposalStatus.PENDIENTE;
   const isCliente = userRole === Role.CLIENTE;
@@ -537,6 +558,15 @@ function ProposalPanelContent({
         </Button>
       )}
 
+      {isEnProgreso && isCliente && (
+        <Button
+          className="w-full"
+          onClick={() => setFinalizarOpen(true)}
+        >
+          Finalizar trabajo
+        </Button>
+      )}
+
       {isEnProgreso && (
         <Button
           variant="danger"
@@ -602,6 +632,28 @@ function ProposalPanelContent({
           description={cancelSuccess.description}
           onClose={() => {
             setCancelSuccess(null);
+            onUpdated();
+          }}
+        />
+      )}
+
+      {finalizarOpen && pedido?.id && (
+        <FinalizarModal
+          orderId={pedido.id}
+          onClose={() => setFinalizarOpen(false)}
+          onSuccess={() => {
+            setFinalizarOpen(false);
+            setFinalizarSuccess(true);
+          }}
+        />
+      )}
+
+      {finalizarSuccess && (
+        <SuccessModal
+          title="¡Trabajo finalizado!"
+          description="El pedido fue calificado exitosamente."
+          onClose={() => {
+            setFinalizarSuccess(false);
             onUpdated();
           }}
         />

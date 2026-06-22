@@ -14,6 +14,7 @@ import { OrderDetail } from './pages/OrderDetail';
 import { Profile } from './pages/Profile';
 import { Admin } from './pages/Admin';
 import { AdminReports } from './pages/AdminReports';
+import { EspecialistaProfile } from './pages/EspecialistaProfile';
 import { ContactArea } from './pages/ContactArea';
 import { MyJobs } from './pages/MyJobs';
 import { Chat } from './pages/Chat';
@@ -100,6 +101,8 @@ export default function App() {
               <Chat />
             </ProtectedRoute>
           } />
+
+          <Route path="/especialistas/:id" element={<EspecialistaProfile />} />
         </Routes>
       </Layout>
     </Router>

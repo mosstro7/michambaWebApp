@@ -215,3 +215,33 @@ export async function toggleReportRevisado(id: string) {
   });
   return handleResponse<Report>(res);
 }
+
+export interface Calificacion {
+  puntuacion: number;
+  comentario: string;
+  creadoEn: string;
+  cliente: { nombre: string; apellido: string };
+}
+
+export interface PerfilEspecialista {
+  id: string;
+  nombre: string;
+  apellido: string;
+  totalTrabajosFinalizados: number;
+  promedioPuntuacion: number | null;
+  calificaciones: Calificacion[];
+}
+
+export async function finalizarPedido(id: string, puntuacion: number, comentario: string) {
+  const res = await fetch(`${BASE_URL}/orders/${id}/finalizar`, {
+    method: 'PATCH',
+    headers: authHeaders(),
+    body: JSON.stringify({ puntuacion, comentario }),
+  });
+  return handleResponse<{ id: string; puntuacion: number; comentario: string }>(res);
+}
+
+export async function getPerfilEspecialista(id: string) {
+  const res = await fetch(`${BASE_URL}/especialistas/${id}/perfil`);
+  return handleResponse<PerfilEspecialista>(res);
+}
