@@ -194,7 +194,7 @@ function ChatJobCard({ chat }: { chat: Chat }) {
         </div>
 
         <div className="mt-3 pt-3 border-t border-gray-50 flex items-center justify-between text-sm text-gray-500">
-          <span>Ir al chat</span>
+          <span>Abrir chat</span>
           <ArrowRight size={16} className="text-teal-600" />
         </div>
       </Card>

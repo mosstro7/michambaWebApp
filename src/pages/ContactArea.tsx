@@ -110,7 +110,7 @@ function SpecialistChatRow({ chat }: { chat: Chat }) {
             <p className="text-sm text-gray-400 truncate">{ultimoMensaje || 'Sin mensajes aún'}</p>
           </div>
           <div className="flex items-center gap-1 text-sm text-teal-600 font-medium flex-shrink-0">
-            Ir al chat
+            Abrir chat
             <ArrowRight size={16} />
           </div>
         </div>

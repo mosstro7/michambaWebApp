@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { CategoryIcon } from '@/components/ui/CategoryIcon';
 import { CATEGORIES } from '@/data/mockData';
-import { CheckCircle, ShieldCheck, Zap, Users } from 'lucide-react';
+import { CheckCircle, ShieldCheck, Zap, Users, Download } from 'lucide-react';
 import { motion } from 'motion/react';
 
 export function Landing() {
@@ -40,6 +40,19 @@ export function Landing() {
               Tengo una cuenta
             </Button>
           </Link>
+          <a
+            href="https://github.com/mosstro7/michambaWebApp/releases/latest"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <Button
+              size="lg"
+              leftIcon={<Download size={18} />}
+              className="w-full sm:w-auto bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 border-none shadow-lg shadow-orange-500/30"
+            >
+              Descargar app
+            </Button>
+          </a>
         </motion.div>
       </section>
 

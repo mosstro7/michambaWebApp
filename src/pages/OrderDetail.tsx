@@ -357,7 +357,7 @@ export function OrderDetail() {
                     leftIcon={<MessageCircle size={18} />}
                     onClick={goToChat}
                   >
-                    Ir al Chat
+                    Abrir chat
                   </Button>
                   {chatError && (
                     <p className="text-xs text-red-600 mt-2 text-center">{chatError}</p>
@@ -697,7 +697,7 @@ function EditProposalModal({
               leftIcon={<MessageCircle size={18} />}
               onClick={onGoToChat}
             >
-              Ir al Chat
+              Abrir chat
             </Button>
           </div>
         ) : (
@@ -995,7 +995,7 @@ function ProposalCard({
               disabled={isStartingChat}
               onClick={handleChat}
             >
-              {existingChat ? 'Ir al Chat' : 'Iniciar chat'}
+              {existingChat ? 'Abrir chat' : 'Iniciar chat'}
             </Button>
           </div>
         </>
