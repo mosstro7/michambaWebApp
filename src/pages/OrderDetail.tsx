@@ -8,10 +8,10 @@ import {
   createChat,
   updateProposal,
   updateProposalStatus,
+  getCategories,
 } from '@/lib/api';
 import { FinalizarModal } from '@/components/ui/FinalizarModal';
 import { useAuthStore } from '@/store/authStore';
-import { CATEGORIES } from '@/data/mockData';
 import {
   OrderStatus,
   ProposalStatus,
@@ -23,13 +23,14 @@ import {
 } from '@/types';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
-import { CategoryIcon } from '@/components/ui/CategoryIcon';
+import { getCategoryIcon } from '@/components/ui/CategoryIcon';
 import { formatCurrency, formatDate, formatDateTime, cn } from '@/utils';
 import {
   ChevronLeft,
   ChevronDown,
   MapPin,
   Calendar,
+  Tag,
   MessageCircle,
   X,
   CheckCircle,
@@ -65,6 +66,7 @@ export function OrderDetail() {
   const [isWithdrawing, setIsWithdrawing] = useState(false);
   const [withdrawError, setWithdrawError] = useState('');
   const [finalizarOpen, setFinalizarOpen] = useState(false);
+  const [categoryName, setCategoryName] = useState<string | undefined>();
 
   const handleFinalizarSuccess = () => {
     setFinalizarOpen(false);
@@ -79,6 +81,15 @@ export function OrderDetail() {
       .catch((err) => setError(err.message || 'Error al cargar el pedido'))
       .finally(() => setIsLoading(false));
   }, [id]);
+
+  // Nombre real de la categoría del pedido (el pedido solo trae categoriaId)
+  const categoriaId = order?.categoriaId;
+  useEffect(() => {
+    if (!categoriaId) return;
+    getCategories()
+      .then((cats) => setCategoryName(cats.find((c) => c.id === categoriaId)?.nombre))
+      .catch(() => {}); // sin categoría, se muestra el ícono genérico
+  }, [categoriaId]);
 
   useEffect(() => {
     if (!id) return;
@@ -176,7 +187,7 @@ export function OrderDetail() {
     );
   }
 
-  const category = CATEGORIES.find((c) => c.id === order.categoriaId);
+  const CategoryIcon = getCategoryIcon(categoryName);
   const isOwner = user?.id === order.clienteId;
   const propuestas = order.propuestas ?? [];
 
@@ -192,11 +203,16 @@ export function OrderDetail() {
       <Card className="border-l-4 border-l-teal-700">
         <div className="flex items-center space-x-3 mb-4">
           <div className="p-2 bg-teal-50 rounded-lg text-teal-700">
-            {category && <CategoryIcon name={category.icono} size={24} />}
+            <CategoryIcon size={24} aria-hidden="true" />
           </div>
           <div>
-            <h2 className="text-lg font-bold">{order.titulo || category?.nombre}</h2>
+            <h2 className="text-lg font-bold">{order.titulo || categoryName}</h2>
             <div className="flex items-center text-xs text-gray-500 space-x-3">
+              {categoryName && (
+                <span className="flex items-center">
+                  <Tag size={12} className="mr-1" /> {categoryName}
+                </span>
+              )}
               <span className="flex items-center">
                 <MapPin size={12} className="mr-1" /> {order.barrio}
               </span>

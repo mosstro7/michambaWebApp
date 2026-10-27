@@ -1,8 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { CategoryIcon, getCategoryIcon } from '@/components/ui/CategoryIcon';
-import { CATEGORIES } from '@/data/mockData';
+import { getCategoryIcon } from '@/components/ui/CategoryIcon';
 import { useAuthStore } from '@/store/authStore';
 import { getOrders, getMyOrders, getCategories } from '@/lib/api';
 import { Role, OrderStatus, Order } from '@/types';
@@ -28,14 +27,19 @@ export function Dashboard() {
       .finally(() => setIsLoading(false));
   }, [isCliente]);
 
-  // id real (backend) → nombre de categoría, para elegir el ícono de cada tarjeta
-  const [categoryNames, setCategoryNames] = useState<Record<string, string>>({});
+  // Categorías reales del backend: alimentan los chips del feed y el ícono de cada tarjeta
+  const [categories, setCategories] = useState<ApiCategory[]>([]);
 
   useEffect(() => {
     getCategories()
-      .then((cats) => setCategoryNames(Object.fromEntries(cats.map((c) => [c.id, c.nombre]))))
-      .catch(() => {}); // sin categorías, las tarjetas usan el ícono genérico
+      .then(setCategories)
+      .catch(() => {}); // sin categorías, no hay chips y las tarjetas usan el ícono genérico
   }, []);
+
+  const categoryNames = useMemo(
+    () => Object.fromEntries(categories.map((c) => [c.id, c.nombre])) as Record<string, string>,
+    [categories],
+  );
 
   if (isLoading) {
     return (
@@ -60,8 +64,12 @@ export function Dashboard() {
     return <ClienteDashboard orders={orders} categoryNames={categoryNames} />;
   }
 
-  return <EspecialistaDashboard orders={orders} categoryNames={categoryNames} />;
+  return (
+    <EspecialistaDashboard orders={orders} categories={categories} categoryNames={categoryNames} />
+  );
 }
+
+type ApiCategory = { id: string; nombre: string };
 
 interface DashboardViewProps {
   orders: Order[];
@@ -107,7 +115,11 @@ function ClienteDashboard({ orders, categoryNames }: DashboardViewProps) {
   );
 }
 
-function EspecialistaDashboard({ orders, categoryNames }: DashboardViewProps) {
+function EspecialistaDashboard({
+  orders,
+  categories,
+  categoryNames,
+}: DashboardViewProps & { categories: ApiCategory[] }) {
   const [categoryFilter, setCategoryFilter] = useState('ALL');
   const [barrioFilter, setBarrioFilter] = useState('ALL');
 
@@ -162,18 +174,21 @@ function EspecialistaDashboard({ orders, categoryNames }: DashboardViewProps) {
           >
             Todos
           </Button>
-          {CATEGORIES.map((cat) => (
-            <Button
-              key={cat.id}
-              size="sm"
-              variant={categoryFilter === cat.id ? 'primary' : 'outline'}
-              onClick={() => setCategoryFilter(cat.id)}
-              className="rounded-full flex-shrink-0 whitespace-nowrap"
-              leftIcon={<CategoryIcon name={cat.icono} size={16} />}
-            >
-              {cat.nombre}
-            </Button>
-          ))}
+          {categories.map((cat) => {
+            const Icon = getCategoryIcon(cat.nombre);
+            return (
+              <Button
+                key={cat.id}
+                size="sm"
+                variant={categoryFilter === cat.id ? 'primary' : 'outline'}
+                onClick={() => setCategoryFilter(cat.id)}
+                className="rounded-full flex-shrink-0 whitespace-nowrap"
+                leftIcon={<Icon size={16} />}
+              >
+                {cat.nombre}
+              </Button>
+            );
+          })}
         </HorizontalScroll>
 
         {hasFilters && (
