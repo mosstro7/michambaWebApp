@@ -10,6 +10,9 @@ interface Category {
   nombre: string;
 }
 
+const STEP_LABELS = ['Categoría', 'Detalles'];
+const TOTAL_STEPS = STEP_LABELS.length;
+
 export function NewOrder() {
   const [step, setStep] = useState(1);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -48,8 +51,9 @@ export function NewOrder() {
     <div className="max-w-xl mx-auto pt-4 pb-12">
       <div className="flex items-center mb-6">
         <button
-          onClick={() => (step === 1 ? navigate(-1) : setStep(1))}
+          onClick={() => (step === 1 ? navigate(-1) : setStep(step - 1))}
           className="p-2 -ml-2 text-gray-500"
+          aria-label={step === 1 ? 'Volver' : 'Paso anterior'}
         >
           <ChevronLeft size={24} />
         </button>
@@ -57,8 +61,14 @@ export function NewOrder() {
       </div>
 
       <div className="mb-8 space-y-3 px-2">
+        <div className="flex items-center justify-between text-sm">
+          <span className="font-semibold text-teal-700">
+            Paso {step} de {TOTAL_STEPS}
+          </span>
+          <span className="text-gray-500">{STEP_LABELS[step - 1]}</span>
+        </div>
         <div className="flex items-center gap-3">
-          {[1, 2].map((s, i) => (
+          {STEP_LABELS.map((_, i) => i + 1).map((s, i) => (
             <span key={s} className="contents">
               <div
                 className={`w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center text-sm font-bold transition-colors ${
@@ -71,14 +81,21 @@ export function NewOrder() {
               >
                 {s < step ? <Check size={16} /> : s}
               </div>
-              {i === 0 && <div className="flex-1 h-px bg-gray-200" />}
+              {i < TOTAL_STEPS - 1 && <div className="flex-1 h-px bg-gray-200" />}
             </span>
           ))}
         </div>
-        <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
+        <div
+          className="h-1.5 bg-gray-200 rounded-full overflow-hidden"
+          role="progressbar"
+          aria-valuemin={1}
+          aria-valuemax={TOTAL_STEPS}
+          aria-valuenow={step}
+          aria-valuetext={`Paso ${step} de ${TOTAL_STEPS}: ${STEP_LABELS[step - 1]}`}
+        >
           <div
             className="h-full bg-teal-700 rounded-full transition-all duration-500"
-            style={{ width: `${(step / 2) * 100}%` }}
+            style={{ width: `${(step / TOTAL_STEPS) * 100}%` }}
           />
         </div>
       </div>

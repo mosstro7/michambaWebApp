@@ -107,13 +107,19 @@ export function Admin() {
                     <td className="px-4 py-3 text-gray-500">{formatDate(u.createdAt)}</td>
                     <td className="px-4 py-3 text-right">
                       {u.rol === 'ADMIN' || u.id === currentUser?.id ? (
-                        <button
-                          disabled
-                          className="p-1.5 text-gray-200 rounded-lg cursor-not-allowed"
-                          title={u.id === currentUser?.id ? 'No podés eliminar tu propio usuario' : 'No se puede eliminar un administrador'}
+                        // El title va en el wrapper: algunos navegadores no muestran tooltips de botones disabled
+                        <span
+                          className="inline-flex cursor-not-allowed"
+                          title={u.rol === 'ADMIN' ? 'No se puede eliminar un administrador' : 'No podés eliminar tu propio usuario'}
                         >
-                          <Trash2 size={16} />
-                        </button>
+                          <button
+                            disabled
+                            aria-label={u.rol === 'ADMIN' ? 'No se puede eliminar un administrador' : 'No podés eliminar tu propio usuario'}
+                            className="p-1.5 text-gray-400 opacity-50 rounded-lg pointer-events-none"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </span>
                       ) : confirmId === u.id ? (
                         <div className="flex items-center justify-end gap-2">
                           <span className="text-xs text-gray-500">¿Confirmar?</span>
