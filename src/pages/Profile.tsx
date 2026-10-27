@@ -166,6 +166,7 @@ export function Profile() {
           <Avatar
             nombre={user.nombre}
             apellido={user.apellido}
+            src={user.avatar}
             size="lg"
             className="border-4 border-white shadow-md"
           />

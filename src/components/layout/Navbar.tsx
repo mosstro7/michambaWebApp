@@ -64,7 +64,7 @@ export function Navbar() {
             to="/profile"
             className="flex items-center space-x-2 text-gray-700 hover:text-blue-600 transition-colors"
           >
-            <Avatar nombre={user?.nombre || ''} apellido={user?.apellido} size="sm" />
+            <Avatar nombre={user?.nombre || ''} apellido={user?.apellido} src={user?.avatar} size="sm" />
             <span className="hidden md:block font-medium text-sm">{user?.nombre}</span>
           </Link>
           <button

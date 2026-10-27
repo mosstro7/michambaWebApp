@@ -1,13 +1,13 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { CategoryIcon } from '@/components/ui/CategoryIcon';
+import { CategoryIcon, getCategoryIcon } from '@/components/ui/CategoryIcon';
 import { CATEGORIES } from '@/data/mockData';
 import { useAuthStore } from '@/store/authStore';
-import { getOrders, getMyOrders } from '@/lib/api';
+import { getOrders, getMyOrders, getCategories } from '@/lib/api';
 import { Role, OrderStatus, Order } from '@/types';
 import { formatDate, cn } from '@/utils';
-import { Plus, Briefcase, MapPin, ChevronDown, Check } from 'lucide-react';
+import { Plus, MapPin, ChevronDown, Check } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { HorizontalScroll } from '@/components/ui/HorizontalScroll';
 
@@ -27,6 +27,15 @@ export function Dashboard() {
       .catch((err) => setError(err.message || 'Error al cargar pedidos'))
       .finally(() => setIsLoading(false));
   }, [isCliente]);
+
+  // id real (backend) → nombre de categoría, para elegir el ícono de cada tarjeta
+  const [categoryNames, setCategoryNames] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    getCategories()
+      .then((cats) => setCategoryNames(Object.fromEntries(cats.map((c) => [c.id, c.nombre]))))
+      .catch(() => {}); // sin categorías, las tarjetas usan el ícono genérico
+  }, []);
 
   if (isLoading) {
     return (
@@ -48,13 +57,18 @@ export function Dashboard() {
   }
 
   if (isCliente) {
-    return <ClienteDashboard orders={orders} />;
+    return <ClienteDashboard orders={orders} categoryNames={categoryNames} />;
   }
 
-  return <EspecialistaDashboard orders={orders} />;
+  return <EspecialistaDashboard orders={orders} categoryNames={categoryNames} />;
 }
 
-function ClienteDashboard({ orders }: { orders: Order[] }) {
+interface DashboardViewProps {
+  orders: Order[];
+  categoryNames: Record<string, string>;
+}
+
+function ClienteDashboard({ orders, categoryNames }: DashboardViewProps) {
   const navigate = useNavigate();
 
   return (
@@ -66,7 +80,7 @@ function ClienteDashboard({ orders }: { orders: Order[] }) {
         </div>
         <Button
           size="sm"
-          className="hidden md:flex"
+          className="flex-shrink-0"
           onClick={() => navigate('/new-order')}
           leftIcon={<Plus size={18} />}
         >
@@ -76,7 +90,9 @@ function ClienteDashboard({ orders }: { orders: Order[] }) {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {orders.length > 0 ? (
-          orders.map((order) => <OrderCard key={order.id} order={order} />)
+          orders.map((order) => (
+            <OrderCard key={order.id} order={order} categoryName={categoryNames[order.categoriaId]} />
+          ))
         ) : (
           <div className="col-span-full py-12 flex flex-col items-center justify-center text-center space-y-4">
             <div>
@@ -87,20 +103,11 @@ function ClienteDashboard({ orders }: { orders: Order[] }) {
           </div>
         )}
       </div>
-
-      {/* FAB visible solo en mobile */}
-      <button
-        onClick={() => navigate('/new-order')}
-        className="fixed bottom-24 right-6 z-[60] md:hidden w-14 h-14 bg-teal-600 hover:bg-teal-700 active:bg-teal-800 text-white rounded-full shadow-lg flex items-center justify-center transition-colors"
-        aria-label="Nuevo pedido"
-      >
-        <Plus size={24} />
-      </button>
     </div>
   );
 }
 
-function EspecialistaDashboard({ orders }: { orders: Order[] }) {
+function EspecialistaDashboard({ orders, categoryNames }: DashboardViewProps) {
   const [categoryFilter, setCategoryFilter] = useState('ALL');
   const [barrioFilter, setBarrioFilter] = useState('ALL');
 
@@ -186,7 +193,9 @@ function EspecialistaDashboard({ orders }: { orders: Order[] }) {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {visible.length > 0 ? (
-          visible.map((order) => <OrderCard key={order.id} order={order} />)
+          visible.map((order) => (
+            <OrderCard key={order.id} order={order} categoryName={categoryNames[order.categoriaId]} />
+          ))
         ) : (
           <div className="col-span-full py-12 text-center space-y-2">
             <p className="text-gray-500">
@@ -311,8 +320,8 @@ function BarrioSelector({ barrios, value, onChange }: BarrioSelectorProps) {
   );
 }
 
-function OrderCard({ order }: { order: Order }) {
-  const category = CATEGORIES.find((c) => c.id === order.categoriaId);
+function OrderCard({ order, categoryName }: { order: Order; categoryName?: string }) {
+  const Icon = getCategoryIcon(categoryName);
   const statusColors = {
     [OrderStatus.ABIERTO]: 'bg-green-100 text-green-700',
     [OrderStatus.EN_PROGRESO]: 'bg-blue-100 text-blue-700',
@@ -325,16 +334,12 @@ function OrderCard({ order }: { order: Order }) {
       <Card className="hover:border-teal-500 transition-colors">
         <div className="flex justify-between items-start mb-3">
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-teal-50 rounded-xl flex items-center justify-center text-teal-700">
-              {category ? (
-                <CategoryIcon name={category.icono} size={20} />
-              ) : (
-                <Briefcase size={20} />
-              )}
+            <div className="w-10 h-10 bg-teal-50 rounded-xl flex items-center justify-center text-teal-700 flex-shrink-0">
+              <Icon size={20} aria-hidden="true" />
             </div>
             <div>
               <h3 className="font-bold text-gray-900 leading-tight">
-                {order.titulo || category?.nombre}
+                {order.titulo || categoryName}
               </h3>
               <p className="text-xs text-gray-500">{order.barrio}</p>
             </div>
