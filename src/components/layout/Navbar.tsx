@@ -28,61 +28,64 @@ export function Navbar() {
   const links = user?.rol ? NAV_LINKS[user.rol] : [];
 
   return (
-    <nav className="sticky top-0 z-50 bg-white border-b border-gray-200 px-4 h-16 flex items-center justify-between shadow-sm">
-      {/* Left: logo + nav links */}
-      <div className="flex items-center gap-1">
-        <Link to="/" className="flex items-center space-x-2 flex-shrink-0 mr-3">
-          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-            <span className="text-white font-bold">M</span>
-          </div>
-          <span className="font-bold text-xl tracking-tight">Mi Chamba</span>
-        </Link>
-
-        {isAuthenticated && links.map((link) => (
-          <NavLink
-            key={link.to}
-            to={link.to}
-            end={link.end}
-            className={({ isActive }) =>
-              cn(
-                'hidden md:block px-3 py-1.5 rounded-lg text-sm font-medium transition-colors',
-                isActive
-                  ? 'font-bold text-teal-700 bg-teal-50'
-                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50',
-              )
-            }
-          >
-            {link.label}
-          </NavLink>
-        ))}
-      </div>
-
-      {/* Right: user info + logout */}
-      {isAuthenticated ? (
-        <div className="flex items-center space-x-3 flex-shrink-0">
-          <Link
-            to="/profile"
-            className="flex items-center space-x-2 text-gray-700 hover:text-blue-600 transition-colors"
-          >
-            <Avatar nombre={user?.nombre || ''} apellido={user?.apellido} src={user?.avatar} size="sm" />
-            <span className="hidden md:block font-medium text-sm">{user?.nombre}</span>
+    <nav className="sticky top-0 z-50 bg-white border-b border-gray-200 h-16 shadow-sm">
+      {/* Mismo ancho que el contenedor de Layout (en mobile, ancho completo) */}
+      <div className="w-full h-full mx-auto px-4 flex items-center justify-between md:max-w-2xl lg:max-w-4xl">
+        {/* Left: logo + nav links */}
+        <div className="flex items-center gap-1">
+          <Link to="/" className="flex items-center space-x-2 flex-shrink-0 mr-3">
+            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+              <span className="text-white font-bold">M</span>
+            </div>
+            <span className="font-bold text-xl tracking-tight">Mi Chamba</span>
           </Link>
-          <button
-            onClick={logout}
-            className="p-2 text-gray-500 hover:text-red-600 transition-colors"
-            title="Cerrar Sesión"
-          >
-            <LogOut size={20} />
-          </button>
+
+          {isAuthenticated && links.map((link) => (
+            <NavLink
+              key={link.to}
+              to={link.to}
+              end={link.end}
+              className={({ isActive }) =>
+                cn(
+                  'hidden md:block px-3 py-1.5 rounded-lg text-sm font-medium transition-colors',
+                  isActive
+                    ? 'font-bold text-teal-700 bg-teal-50'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50',
+                )
+              }
+            >
+              {link.label}
+            </NavLink>
+          ))}
         </div>
-      ) : (
-        <Link
-          to="/login"
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors"
-        >
-          Ingresar
-        </Link>
-      )}
+
+        {/* Right: user info + logout */}
+        {isAuthenticated ? (
+          <div className="flex items-center space-x-3 flex-shrink-0">
+            <Link
+              to="/profile"
+              className="flex items-center space-x-2 text-gray-700 hover:text-blue-600 transition-colors"
+            >
+              <Avatar nombre={user?.nombre || ''} apellido={user?.apellido} src={user?.avatar} size="sm" />
+              <span className="hidden md:block font-medium text-sm">{user?.nombre}</span>
+            </Link>
+            <button
+              onClick={logout}
+              className="p-2 text-gray-500 hover:text-red-600 transition-colors"
+              title="Cerrar Sesión"
+            >
+              <LogOut size={20} />
+            </button>
+          </div>
+        ) : (
+          <Link
+            to="/login"
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors"
+          >
+            Ingresar
+          </Link>
+        )}
+      </div>
     </nav>
   );
 }
