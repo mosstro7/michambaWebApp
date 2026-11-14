@@ -21,29 +21,97 @@ async function handleResponse<T>(res: Response): Promise<T> {
   return res.json();
 }
 
+// Promesa del refresh en curso, compartida por todas las requests que caen en
+// 401 a la vez: así se hace un único POST /auth/refresh. Con refresh tokens
+// rotativos, dos refresh en paralelo con el mismo token harían fallar al segundo.
+let refreshPromise: Promise<void> | null = null;
+
+function refreshTokens(): Promise<void> {
+  if (!refreshPromise) {
+    refreshPromise = (async () => {
+      const refreshToken = useAuthStore.getState().refreshToken;
+      if (!refreshToken) {
+        const error = new Error('Sesión expirada') as Error & { status: number };
+        error.status = 401;
+        throw error;
+      }
+      const res = await fetch(`${BASE_URL}/auth/refresh`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refreshToken }),
+      });
+      const data = await handleResponse<{ accessToken: string; refreshToken: string }>(res);
+      useAuthStore.getState().setTokens(data.accessToken, data.refreshToken);
+    })().finally(() => {
+      refreshPromise = null;
+    });
+  }
+  return refreshPromise;
+}
+
+let redirectingToLogin = false;
+
+function expireSession(): never {
+  useAuthStore.getState().logout();
+  if (!redirectingToLogin) {
+    redirectingToLogin = true;
+    window.location.replace('/login');
+  }
+  const error = new Error('Sesión expirada') as Error & { status: number };
+  error.status = 401;
+  throw error;
+}
+
+async function apiFetch<T>(path: string, init: RequestInit = {}, opts: { auth?: boolean } = {}): Promise<T> {
+  const auth = opts.auth !== false;
+  const send = () =>
+    fetch(`${BASE_URL}${path}`, {
+      ...init,
+      headers: auth ? authHeaders() : init.body ? { 'Content-Type': 'application/json' } : undefined,
+    });
+
+  const sentToken = auth ? useAuthStore.getState().token : null;
+  const res = await send();
+  // Sin token enviado (visitante) un 401 es un error común, no una sesión vencida.
+  if (res.status !== 401 || !sentToken) return handleResponse<T>(res);
+
+  // Si otra request ya renovó el token mientras esta estaba en vuelo,
+  // se reintenta directo con el nuevo, sin un segundo refresh.
+  if (useAuthStore.getState().token === sentToken) {
+    try {
+      await refreshTokens();
+    } catch (err: any) {
+      if (err?.status === 401) expireSession();
+      throw err;
+    }
+  }
+
+  // Un único reintento: si vuelve a dar 401 no se intenta otro refresh.
+  const retry = await send();
+  if (retry.status === 401) expireSession();
+  return handleResponse<T>(retry);
+}
+
 export async function register(nombre: string, email: string, password: string, rol: string) {
-  const res = await fetch(`${BASE_URL}/auth/register`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ nombre, email, password, rol }),
-  });
-  return handleResponse<{ accessToken: string; user: User }>(res);
+  return apiFetch<{ accessToken: string; refreshToken: string; user: User }>(
+    '/auth/register',
+    { method: 'POST', body: JSON.stringify({ nombre, email, password, rol }) },
+    { auth: false },
+  );
 }
 
 export async function login(email: string, password: string) {
-  const res = await fetch(`${BASE_URL}/auth/login`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, password }),
-  });
-  const data = await handleResponse<{ accessToken: string; user: User }>(res);
-  useAuthStore.getState().setAuth(data.user, data.accessToken);
+  const data = await apiFetch<{ accessToken: string; refreshToken: string; user: User }>(
+    '/auth/login',
+    { method: 'POST', body: JSON.stringify({ email, password }) },
+    { auth: false },
+  );
+  useAuthStore.getState().setAuth(data.user, data.accessToken, data.refreshToken);
   return data;
 }
 
 export async function getMyOrders() {
-  const res = await fetch(`${BASE_URL}/orders/mine`, { headers: authHeaders() });
-  return handleResponse<Order[]>(res);
+  return apiFetch<Order[]>('/orders/mine');
 }
 
 export async function getOrders(filtros?: { categoriaId?: string; estado?: string }) {
@@ -51,8 +119,7 @@ export async function getOrders(filtros?: { categoriaId?: string; estado?: strin
   if (filtros?.categoriaId) params.set('categoriaId', filtros.categoriaId);
   if (filtros?.estado) params.set('estado', filtros.estado);
   const query = params.toString() ? `?${params}` : '';
-  const res = await fetch(`${BASE_URL}/orders${query}`, { headers: authHeaders() });
-  return handleResponse<Order[]>(res);
+  return apiFetch<Order[]>(`/orders${query}`);
 }
 
 export async function createOrder(
@@ -61,127 +128,96 @@ export async function createOrder(
   categoriaId: string,
   barrio: string,
 ) {
-  const res = await fetch(`${BASE_URL}/orders`, {
+  return apiFetch<Order>('/orders', {
     method: 'POST',
-    headers: authHeaders(),
     body: JSON.stringify({ titulo, descripcion, categoriaId, barrio }),
   });
-  return handleResponse<Order>(res);
 }
 
 export async function getUsuarios() {
-  const res = await fetch(`${BASE_URL}/admin/usuarios`, { headers: authHeaders() });
-  return handleResponse<{ id: string; nombre: string; email: string; rol: string; createdAt: string }[]>(res);
+  return apiFetch<{ id: string; nombre: string; email: string; rol: string; createdAt: string }[]>('/admin/usuarios');
 }
 
 export async function deleteUsuario(id: string) {
-  const res = await fetch(`${BASE_URL}/admin/usuarios/${id}`, {
-    method: 'DELETE',
-    headers: authHeaders(),
-  });
-  return handleResponse<{ message: string }>(res);
+  return apiFetch<{ message: string }>(`/admin/usuarios/${id}`, { method: 'DELETE' });
 }
 
 export async function getCategories() {
-  const res = await fetch(`${BASE_URL}/categories`);
-  return handleResponse<{ id: string; nombre: string }[]>(res);
+  return apiFetch<{ id: string; nombre: string }[]>('/categories', {}, { auth: false });
 }
 
 export async function acceptProposal(id: string) {
-  const res = await fetch(`${BASE_URL}/proposals/${id}/accept`, {
-    method: 'PATCH',
-    headers: authHeaders(),
-  });
-  return handleResponse<{ id: string; estado: string; pedidoId?: string }>(res);
+  return apiFetch<{ id: string; estado: string; pedidoId?: string }>(`/proposals/${id}/accept`, { method: 'PATCH' });
 }
 
 export async function updateProposal(id: string, precio: number, mensaje: string) {
-  const res = await fetch(`${BASE_URL}/proposals/${id}`, {
+  return apiFetch<Proposal>(`/proposals/${id}`, {
     method: 'PATCH',
-    headers: authHeaders(),
     body: JSON.stringify({ precio, mensaje }),
   });
-  return handleResponse<Proposal>(res);
 }
 
 export async function updateProposalStatus(id: string, estado: string) {
-  const res = await fetch(`${BASE_URL}/proposals/${id}`, {
+  return apiFetch<Proposal>(`/proposals/${id}`, {
     method: 'PATCH',
-    headers: authHeaders(),
     body: JSON.stringify({ estado }),
   });
-  return handleResponse<Proposal>(res);
 }
 
 export async function getProposalsByOrder(orderId: string) {
-  const res = await fetch(`${BASE_URL}/proposals?orderId=${orderId}`, { headers: authHeaders() });
-  return handleResponse<Proposal[]>(res);
+  return apiFetch<Proposal[]>(`/proposals?orderId=${orderId}`);
 }
 
 export async function createReport(chatId: string, motivo: string) {
-  const res = await fetch(`${BASE_URL}/reports`, {
+  return apiFetch<{ id: string }>('/reports', {
     method: 'POST',
-    headers: authHeaders(),
     body: JSON.stringify({ chatId, motivo }),
   });
-  return handleResponse<{ id: string }>(res);
 }
 
 export async function getChatByOrder(orderId: string) {
-  const res = await fetch(`${BASE_URL}/chats/order/${orderId}`, { headers: authHeaders() });
-  return handleResponse<Chat[]>(res);
+  return apiFetch<Chat[]>(`/chats/order/${orderId}`);
 }
 
 export async function getChats() {
-  const res = await fetch(`${BASE_URL}/chats`, { headers: authHeaders() });
-  return handleResponse<Chat[]>(res);
+  return apiFetch<Chat[]>('/chats');
 }
 
 export async function getChat(chatId: string) {
-  const res = await fetch(`${BASE_URL}/chats/${chatId}`, { headers: authHeaders() });
-  return handleResponse<Chat>(res);
+  return apiFetch<Chat>(`/chats/${chatId}`);
 }
 
 export async function createChat(pedidoId: string, especialistaId: string) {
-  const res = await fetch(`${BASE_URL}/chats`, {
+  return apiFetch<Chat>('/chats', {
     method: 'POST',
-    headers: authHeaders(),
     body: JSON.stringify({ pedidoId, especialistaId }),
   });
-  return handleResponse<Chat>(res);
 }
 
 export async function getChatMessages(chatId: string) {
-  const res = await fetch(`${BASE_URL}/chats/${chatId}/messages`, { headers: authHeaders() });
-  return handleResponse<MessageWithSender[]>(res);
+  return apiFetch<MessageWithSender[]>(`/chats/${chatId}/messages`);
 }
 
 export async function createProposal(orderId: string, precio: number, mensaje: string) {
-  const res = await fetch(`${BASE_URL}/proposals`, {
+  return apiFetch<{ id: string }>('/proposals', {
     method: 'POST',
-    headers: authHeaders(),
     body: JSON.stringify({ orderId, precio, mensaje }),
   });
-  return handleResponse<{ id: string }>(res);
 }
 
 export async function getOrder(id: string) {
-  const res = await fetch(`${BASE_URL}/orders/${id}`, { headers: authHeaders() });
-  return handleResponse<Order & { propuestas?: Proposal[] }>(res);
+  return apiFetch<Order & { propuestas?: Proposal[] }>(`/orders/${id}`);
 }
 
 export async function getMyProposals() {
-  const res = await fetch(`${BASE_URL}/proposals/mine`, { headers: authHeaders() });
-  return handleResponse<ProposalWithOrder[]>(res);
+  return apiFetch<ProposalWithOrder[]>('/proposals/mine');
 }
 
 export async function cancelOrder(orderId: string, motivo: string) {
-  const res = await fetch(`${BASE_URL}/orders/${orderId}/cancel`, {
+  return apiFetch<Order>(`/orders/${orderId}/cancel`, {
     method: 'PATCH',
-    headers: authHeaders(),
     body: JSON.stringify({ motivo }),
   });
-  return handleResponse<Order>(res);
 }
 
 export interface ReportUser {
@@ -204,16 +240,11 @@ export interface Report {
 }
 
 export async function getReports() {
-  const res = await fetch(`${BASE_URL}/reports`, { headers: authHeaders() });
-  return handleResponse<Report[]>(res);
+  return apiFetch<Report[]>('/reports');
 }
 
 export async function toggleReportRevisado(id: string) {
-  const res = await fetch(`${BASE_URL}/reports/${id}/revisado`, {
-    method: 'PATCH',
-    headers: authHeaders(),
-  });
-  return handleResponse<Report>(res);
+  return apiFetch<Report>(`/reports/${id}/revisado`, { method: 'PATCH' });
 }
 
 export interface Calificacion {
@@ -250,22 +281,18 @@ export interface PerfilEspecialista {
 }
 
 export async function finalizarPedido(id: string, puntuacion: number, comentario: string) {
-  const res = await fetch(`${BASE_URL}/orders/${id}/finalizar`, {
+  return apiFetch<{ id: string; puntuacion: number; comentario: string }>(`/orders/${id}/finalizar`, {
     method: 'PATCH',
-    headers: authHeaders(),
     body: JSON.stringify({ puntuacion, comentario }),
   });
-  return handleResponse<{ id: string; puntuacion: number; comentario: string }>(res);
 }
 
 export async function getPerfilEspecialista(id: string) {
-  const res = await fetch(`${BASE_URL}/especialistas/${id}/perfil`);
-  return handleResponse<PerfilEspecialista>(res);
+  return apiFetch<PerfilEspecialista>(`/especialistas/${id}/perfil`, {}, { auth: false });
 }
 
 export async function getMe() {
-  const res = await fetch(`${BASE_URL}/usuarios/me`, { headers: authHeaders() });
-  return handleResponse<Me>(res);
+  return apiFetch<Me>('/usuarios/me');
 }
 
 export async function updateMe(body: {
@@ -275,10 +302,8 @@ export async function updateMe(body: {
   especialidad?: string;
   experiencia?: string;
 }) {
-  const res = await fetch(`${BASE_URL}/usuarios/me`, {
+  return apiFetch<Omit<Me, 'telefono'>>('/usuarios/me', {
     method: 'PATCH',
-    headers: authHeaders(),
     body: JSON.stringify(body),
   });
-  return handleResponse<Omit<Me, 'telefono'>>(res);
 }
