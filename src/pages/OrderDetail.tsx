@@ -40,12 +40,6 @@ import { Avatar } from '@/components/ui/Avatar';
 
 type OrderWithProposals = Order & { propuestas?: Proposal[] };
 
-// El backend a veces incluye el id del especialista solo dentro de la
-// relación `especialista`, sin poblar `especialistaId` en la propuesta.
-function getEspecialistaId(proposal: Proposal): string {
-  return proposal.especialista?.id ?? proposal.especialistaId;
-}
-
 export function OrderDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -106,7 +100,7 @@ export function OrderDetail() {
 
   // ESPECIALISTA: chat propio para este pedido (creado por el cliente)
   const miChat = chats.find(
-    (c) => c.especialistaId === user?.id || c.especialista?.id === user?.id,
+    (c) => c.especialistaId === user?.id,
   );
 
   const goToChat = () => {
@@ -154,10 +148,8 @@ export function OrderDetail() {
   const handleChatWithSpecialist = async (proposal: Proposal) => {
     setChatError('');
     const navState = { titulo: order?.titulo };
-    const especialistaId = getEspecialistaId(proposal);
-    const existing = chats.find(
-      (c) => c.especialistaId === especialistaId || c.especialista?.id === especialistaId,
-    );
+    const especialistaId = proposal.especialistaId;
+    const existing = chats.find((c) => c.especialistaId === especialistaId);
     if (existing) {
       navigate(`/chats/${existing.id}`, { state: navState });
       return;
@@ -267,11 +259,7 @@ export function OrderDetail() {
                   proposal={proposal}
                   orderEstado={order.estado}
                   canAccept={order.estado === OrderStatus.ABIERTO}
-                  existingChat={chats.find(
-                    (c) =>
-                      c.especialistaId === getEspecialistaId(proposal) ||
-                      c.especialista?.id === getEspecialistaId(proposal),
-                  )}
+                  existingChat={chats.find((c) => c.especialistaId === proposal.especialistaId)}
                   onAccept={() => handleAcceptProposal(proposal.id)}
                   onReject={() => handleRejectProposal(proposal.id)}
                   onChat={() => handleChatWithSpecialist(proposal)}
@@ -849,7 +837,7 @@ function ProposalCard({
   const especialista = proposal.especialista;
   const nombreCompleto = especialista
     ? `${especialista.nombre} ${especialista.apellido}`.trim()
-    : `Especialista #${getEspecialistaId(proposal).slice(0, 6)}`;
+    : `Especialista #${proposal.especialistaId.slice(0, 6)}`;
 
   const isAceptada = proposal.estado === ProposalStatus.ACEPTADA;
   const isRechazada = proposal.estado === ProposalStatus.RECHAZADA;
@@ -897,7 +885,7 @@ function ProposalCard({
           />
           <div>
             <Link
-              to={`/especialistas/${getEspecialistaId(proposal)}`}
+              to={`/especialistas/${proposal.especialistaId}`}
               className="font-bold hover:text-teal-700 hover:underline transition-colors"
             >
               {nombreCompleto}

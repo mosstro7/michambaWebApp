@@ -95,7 +95,7 @@ export function Chat() {
     orderEstado === OrderStatus.FINALIZADO ||
     localFinalizado;
 
-  const especialistaId = chatInfo?.especialistaId ?? chatInfo?.especialista?.id;
+  const especialistaId = chatInfo?.especialistaId;
   const especialistaProfileLink =
     user?.rol === Role.CLIENTE && especialistaId
       ? `/especialistas/${especialistaId}`
