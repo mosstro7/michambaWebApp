@@ -128,6 +128,14 @@ export function OrderDetail() {
     }
   };
 
+  // ESPECIALISTA: recargar el pedido para que "Mi Propuesta" aparezca sola
+  const handleProposalCreated = () => {
+    if (!id) return;
+    getOrder(id)
+      .then((data) => setOrder(data))
+      .catch((err) => console.error('[OrderDetail] getOrder tras crear propuesta:', err));
+  };
+
   const handleAcceptProposal = async (proposalId: string) => {
     await acceptProposal(proposalId);
     if (id) {
@@ -438,7 +446,11 @@ export function OrderDetail() {
       )}
 
       {modalOpen && id && (
-        <ProposalModal orderId={id} onClose={() => setModalOpen(false)} />
+        <ProposalModal
+          orderId={id}
+          onClose={() => setModalOpen(false)}
+          onCreated={handleProposalCreated}
+        />
       )}
 
       {finalizarOpen && id && (
@@ -470,7 +482,15 @@ export function OrderDetail() {
 
 // ─── Nueva propuesta ────────────────────────────────────────────────────────
 
-function ProposalModal({ orderId, onClose }: { orderId: string; onClose: () => void }) {
+function ProposalModal({
+  orderId,
+  onClose,
+  onCreated,
+}: {
+  orderId: string;
+  onClose: () => void;
+  onCreated: () => void;
+}) {
   const [precio, setPrecio] = useState('');
   const [mensaje, setMensaje] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -484,6 +504,7 @@ function ProposalModal({ orderId, onClose }: { orderId: string; onClose: () => v
     try {
       await createProposal(orderId, Number(precio), mensaje);
       setSuccess(true);
+      onCreated();
     } catch (err: any) {
       setError(err.message || 'Error al enviar la propuesta');
     } finally {
