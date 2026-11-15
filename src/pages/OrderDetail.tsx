@@ -89,7 +89,15 @@ export function OrderDetail() {
     if (!id) return;
     getChatByOrder(id)
       .then(setChats)
-      .catch((err) => console.error('[OrderDetail] getChatByOrder al montar:', err));
+      .catch((err) => {
+        // 403: el especialista todavía no es participante del pedido (el cliente
+        // no lo contactó). No es un error: simplemente no hay chats para mostrar.
+        if (err?.status === 403) {
+          setChats([]);
+          return;
+        }
+        console.error('[OrderDetail] getChatByOrder al montar:', err);
+      });
   }, [id]);
 
   useEffect(() => {
