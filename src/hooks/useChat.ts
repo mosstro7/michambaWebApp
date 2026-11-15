@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { useAuthStore } from '@/store/authStore';
+import { refreshTokens, endSession } from '@/lib/api';
 import type { MessageWithSender } from '@/types';
 
 const WS_URL = import.meta.env.VITE_API_URL as string;
@@ -16,11 +17,27 @@ export function useChat(chatId: string | undefined, onSocketError?: (message: st
 
   useEffect(() => { userRef.current = user; }, [user]);
 
+  // El socket depende de que haya sesión, no del token puntual: con `auth` como
+  // función, un refresh no necesita recrear el socket.
+  const hasToken = !!token;
+
   useEffect(() => {
-    if (!chatId || !token) return;
+    if (!chatId || !hasToken) return;
+
+    let cancelled = false;
+    // Token que viajó en el último handshake, para saber si otro refresh
+    // (por ejemplo uno HTTP) ya lo renovó mientras tanto.
+    let sentToken: string | null = null;
+    // Un solo reintento por vencimiento; se rearma cuando la conexión entra.
+    let retriedExpired = false;
 
     const socket = io(WS_URL, {
-      auth: { token },
+      // Se evalúa en cada intento de conexión (también en las reconexiones),
+      // así siempre viaja el token vigente del store.
+      auth: (cb) => {
+        sentToken = useAuthStore.getState().token;
+        cb({ token: sentToken });
+      },
       transports: ['polling', 'websocket'],
       reconnection: true,
       reconnectionAttempts: Infinity,
@@ -35,7 +52,6 @@ export function useChat(chatId: string | undefined, onSocketError?: (message: st
       if (!message.contenido && message.content) {
         message.contenido = message.content;
       }
-      console.log('[useChat] new_message received:', message);
       setMessages((prev) => {
         // Match any temp placeholder with same content — only the current user
         // creates temp messages, so remitenteId check is unnecessary and breaks
@@ -66,19 +82,37 @@ export function useChat(chatId: string | undefined, onSocketError?: (message: st
     });
 
     socket.on('connect', () => {
-      console.log('[useChat] connected, joining chat:', chatId);
+      retriedExpired = false;
       setConnected(true);
       socket.emit('join_chat', { chatId });
-      console.log('[useChat] join_chat emitted:', { chatId });
     });
 
-    socket.on('disconnect', (reason) => {
-      console.log('[useChat] disconnected:', reason);
+    socket.on('disconnect', () => {
       setConnected(false);
     });
 
-    socket.on('connect_error', (err) => {
-      console.error('[useChat] connect_error:', err.message);
+    // Si el backend rechaza el handshake por auth, socket.io-client no reconecta
+    // solo. Sin `data.code` es un error de red y la reconexión automática sigue.
+    socket.on('connect_error', async (err: Error & { data?: { code?: string } }) => {
+      const code = err.data?.code;
+      if (!code) return;
+
+      if (code === 'TOKEN_INVALID' || code === 'TOKEN_MISSING') {
+        endSession();
+        return;
+      }
+      if (code !== 'TOKEN_EXPIRED' || retriedExpired) return;
+      retriedExpired = true;
+
+      try {
+        // Igual que en HTTP: si el store ya tiene otro token, alcanza con reintentar.
+        if (useAuthStore.getState().token === sentToken) await refreshTokens();
+      } catch (refreshErr: any) {
+        // 401: sesión vencida. Otro error (500, red caída): no se desloguea.
+        if (refreshErr?.status === 401) endSession();
+        return;
+      }
+      if (!cancelled) socket.connect();
     });
 
     socket.on('exception', (err: { message?: string; status?: string } | string) => {
@@ -90,10 +124,11 @@ export function useChat(chatId: string | undefined, onSocketError?: (message: st
     });
 
     return () => {
+      cancelled = true;
       socket.disconnect();
       if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
     };
-  }, [chatId, token]);
+  }, [chatId, hasToken]);
 
   const sendMessage = useCallback(
     (contenido: string) => {
@@ -118,7 +153,6 @@ export function useChat(chatId: string | undefined, onSocketError?: (message: st
           },
         ]);
       }
-      console.log('[useChat] send_message emitted:', { chatId, content: contenido });
       socketRef.current.emit('send_message', { chatId, content: contenido });
     },
     [chatId],

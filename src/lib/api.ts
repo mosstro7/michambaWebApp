@@ -26,7 +26,8 @@ async function handleResponse<T>(res: Response): Promise<T> {
 // rotativos, dos refresh en paralelo con el mismo token harían fallar al segundo.
 let refreshPromise: Promise<void> | null = null;
 
-function refreshTokens(): Promise<void> {
+// Exportada para que el socket del chat use la misma promesa deduplicada.
+export function refreshTokens(): Promise<void> {
   if (!refreshPromise) {
     refreshPromise = (async () => {
       const refreshToken = useAuthStore.getState().refreshToken;
@@ -51,12 +52,17 @@ function refreshTokens(): Promise<void> {
 
 let redirectingToLogin = false;
 
-function expireSession(): never {
+// Logout + redirección a /login sin lanzar: la usa también el socket del chat.
+export function endSession(): void {
   useAuthStore.getState().logout();
   if (!redirectingToLogin) {
     redirectingToLogin = true;
     window.location.replace('/login');
   }
+}
+
+function expireSession(): never {
+  endSession();
   const error = new Error('Sesión expirada') as Error & { status: number };
   error.status = 401;
   throw error;
