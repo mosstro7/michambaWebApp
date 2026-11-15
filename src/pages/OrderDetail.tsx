@@ -85,20 +85,26 @@ export function OrderDetail() {
       .catch(() => {}); // sin categoría, se muestra el ícono genérico
   }, [categoriaId]);
 
+  // El backend responde 403 a un ESPECIALISTA sin propuesta en el pedido, así que
+  // para él los chats se piden recién cuando el pedido cargó y tiene una propuesta
+  // suya. CLIENTE y ADMIN los piden al montar, en paralelo con el pedido.
+  const tengoPropuesta = !!order?.propuestas?.some((p) => p.especialistaId === user?.id);
+  const puedeVerChats = !isEspecialista || tengoPropuesta;
+
   useEffect(() => {
-    if (!id) return;
+    if (!id || !puedeVerChats) return;
     getChatByOrder(id)
       .then(setChats)
       .catch((err) => {
-        // 403: el especialista todavía no es participante del pedido (el cliente
-        // no lo contactó). No es un error: simplemente no hay chats para mostrar.
+        // Defensa: si igual llega un 403 (no es participante del pedido), no es
+        // un error: simplemente no hay chats para mostrar.
         if (err?.status === 403) {
           setChats([]);
           return;
         }
-        console.error('[OrderDetail] getChatByOrder al montar:', err);
+        console.error('[OrderDetail] getChatByOrder:', err);
       });
-  }, [id]);
+  }, [id, puedeVerChats]);
 
   useEffect(() => {
     if (!order || !isEspecialista || !user?.id) return;
