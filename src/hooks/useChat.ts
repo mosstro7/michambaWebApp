@@ -61,12 +61,7 @@ export function useChat(chatId: string | undefined, onSocketError?: (message: st
         );
         if (tempIdx !== -1) {
           const updated = [...prev];
-          // Preserve remitenteId from optimistic if server omitted it, so the
-          // message keeps rendering on the correct side (RIGHT = own).
-          updated[tempIdx] = {
-            ...message,
-            remitenteId: message.remitenteId ?? prev[tempIdx].remitenteId,
-          };
+          updated[tempIdx] = message;
           return updated;
         }
         // No temp found → message from the other participant; dedup by real id.
