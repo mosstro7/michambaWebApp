@@ -53,11 +53,14 @@ export function useChat(chatId: string | undefined, onSocketError?: (message: st
         message.contenido = message.content;
       }
       setMessages((prev) => {
-        // Match any temp placeholder with same content — only the current user
-        // creates temp messages, so remitenteId check is unnecessary and breaks
-        // when the server omits or serializes remitenteId differently.
+        // Solo un mensaje propio puede confirmar un temporal: mismo contenido y
+        // mismo remitente. Así, si el otro participante manda el mismo texto
+        // mientras el nuestro está pendiente, no lo reemplaza.
         const tempIdx = prev.findIndex(
-          (m) => m.id.startsWith('temp-') && m.contenido === message.contenido,
+          (m) =>
+            m.id.startsWith('temp-') &&
+            m.contenido === message.contenido &&
+            message.remitenteId === userRef.current?.id,
         );
         if (tempIdx !== -1) {
           const updated = [...prev];
