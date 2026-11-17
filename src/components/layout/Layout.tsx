@@ -2,6 +2,7 @@ import { ReactNode } from 'react';
 import { Navbar } from './Navbar';
 import { TabBar } from './TabBar';
 import { useAuthStore } from '@/store/authStore';
+import { useNotificationsSocket } from '@/hooks/useNotificationsSocket';
 
 interface LayoutProps {
   children: ReactNode;
@@ -10,6 +11,7 @@ interface LayoutProps {
 
 export function Layout({ children, showNavigation = true }: LayoutProps) {
   const { isAuthenticated } = useAuthStore();
+  useNotificationsSocket();
 
   return (
     <div className="min-h-screen flex flex-col">
