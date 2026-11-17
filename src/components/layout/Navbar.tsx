@@ -2,6 +2,7 @@ import { Link, NavLink } from 'react-router-dom';
 import { LogOut } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { Avatar } from '@/components/ui/Avatar';
+import { NotificationBell } from './NotificationBell';
 import { Role } from '@/types';
 import { cn } from '@/utils';
 
@@ -62,6 +63,7 @@ export function Navbar() {
         {/* Right: user info + logout */}
         {isAuthenticated ? (
           <div className="flex items-center space-x-3 flex-shrink-0">
+            <NotificationBell />
             <Link
               to="/profile"
               className="flex items-center space-x-2 text-gray-700 hover:text-blue-600 transition-colors"
