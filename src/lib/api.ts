@@ -1,5 +1,5 @@
 import { useAuthStore } from '@/store/authStore';
-import type { Order, User, Proposal, ProposalWithOrder, Chat, MessageWithSender } from '@/types';
+import type { Order, User, Proposal, ProposalWithOrder, Chat, MessageWithSender, NotificationPage } from '@/types';
 
 const BASE_URL = import.meta.env.VITE_API_URL as string;
 
@@ -295,6 +295,27 @@ export async function finalizarPedido(id: string, puntuacion: number, comentario
 
 export async function getPerfilEspecialista(id: string) {
   return apiFetch<PerfilEspecialista>(`/especialistas/${id}/perfil`, {}, { auth: false });
+}
+
+// Notificaciones: ordenadas de la más nueva a la más vieja. Para la página
+// siguiente se pasa el nextCursor de la anterior (null cuando no hay más).
+export async function getNotifications(cursor?: string, limit = 20) {
+  const params = new URLSearchParams({ limit: String(limit) });
+  if (cursor) params.set('cursor', cursor);
+  return apiFetch<NotificationPage>(`/notifications?${params}`);
+}
+
+export async function getUnreadCount() {
+  return apiFetch<{ count: number }>('/notifications/unread-count');
+}
+
+// La respuesta de los PATCH no se usa: el store ya aplicó el cambio.
+export async function markNotificationRead(id: string) {
+  return apiFetch<unknown>(`/notifications/${id}/read`, { method: 'PATCH' });
+}
+
+export async function markAllNotificationsRead() {
+  return apiFetch<unknown>('/notifications/read-all', { method: 'PATCH' });
 }
 
 export async function getMe() {

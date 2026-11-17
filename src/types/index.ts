@@ -141,3 +141,19 @@ export interface Chat {
     remitenteId?: string;
   };
 }
+
+export interface Notificacion {
+  id: string;
+  usuarioId: string;
+  tipo: string;
+  contenido: string;
+  leido: boolean;
+  createdAt: string;
+  pedidoId?: string;
+  chatId?: string;
+}
+
+export interface NotificationPage {
+  items: Notificacion[];
+  nextCursor: string | null;
+}
