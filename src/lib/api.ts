@@ -1,4 +1,5 @@
 import { useAuthStore } from '@/store/authStore';
+import { isTokenExpiringSoon } from '@/lib/jwt';
 import type { Order, User, Proposal, ProposalWithOrder, Chat, MessageWithSender, NotificationPage } from '@/types';
 
 const BASE_URL = import.meta.env.VITE_API_URL as string;
@@ -75,6 +76,19 @@ async function apiFetch<T>(path: string, init: RequestInit = {}, opts: { auth?: 
       ...init,
       headers: auth ? authHeaders() : init.body ? { 'Content-Type': 'application/json' } : undefined,
     });
+
+  // Refresh anticipado: si al access token le quedan menos de 30 s, se renueva
+  // antes de mandar la request (misma promesa deduplicada que el camino por 401).
+  // Si el refresh falla por otro motivo que 401, se sigue con el token actual y
+  // el manejo de 401 de abajo queda como red de seguridad.
+  const currentToken = auth ? useAuthStore.getState().token : null;
+  if (currentToken && isTokenExpiringSoon(currentToken)) {
+    try {
+      await refreshTokens();
+    } catch (err: any) {
+      if (err?.status === 401) expireSession();
+    }
+  }
 
   const sentToken = auth ? useAuthStore.getState().token : null;
   const res = await send();

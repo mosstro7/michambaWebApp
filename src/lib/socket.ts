@@ -1,6 +1,7 @@
 import { io, Socket } from 'socket.io-client';
 import { useAuthStore } from '@/store/authStore';
 import { refreshTokens, endSession } from '@/lib/api';
+import { isTokenExpiringSoon } from '@/lib/jwt';
 
 const WS_URL = import.meta.env.VITE_API_URL as string;
 
@@ -24,9 +25,23 @@ export function createAuthedSocket(): AuthedSocket {
   const socket = io(WS_URL, {
     // Se evalúa en cada intento de conexión (también en las reconexiones),
     // así siempre viaja el token vigente del store.
+    // Puede ser asíncrona: socket.io-client recién manda el CONNECT cuando se
+    // llama a cb. Si al token le quedan menos de 30 s se renueva antes; cb se
+    // llama SIEMPRE (si no, el handshake queda colgado), con el token que haya
+    // en el store en ese momento. Si viaja vencido, lo resuelve connect_error.
     auth: (cb) => {
-      sentToken = useAuthStore.getState().token;
-      cb({ token: sentToken });
+      void (async () => {
+        const current = useAuthStore.getState().token;
+        if (current && isTokenExpiringSoon(current)) {
+          try {
+            await refreshTokens();
+          } catch {
+            // Se sigue con el token actual; ver connect_error.
+          }
+        }
+        sentToken = useAuthStore.getState().token;
+        cb({ token: sentToken });
+      })();
     },
     transports: ['polling', 'websocket'],
     reconnection: true,
