@@ -184,6 +184,12 @@ export async function updateProposalStatus(id: string, estado: string) {
   });
 }
 
+// RETIRADA -> PENDIENTE. Devuelve la propuesta con el mismo formato que la edición.
+// 409 si ya no se puede reactivar (el mensaje viene del backend).
+export async function reactivarPropuesta(id: string) {
+  return apiFetch<Proposal>(`/proposals/${id}/reactivar`, { method: 'PATCH' });
+}
+
 export async function getProposalsByOrder(orderId: string) {
   return apiFetch<Proposal[]>(`/proposals?orderId=${orderId}`);
 }

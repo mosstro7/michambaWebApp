@@ -8,6 +8,7 @@ import {
   createChat,
   updateProposal,
   updateProposalStatus,
+  reactivarPropuesta,
   getCategories,
 } from '@/lib/api';
 import { FinalizarModal } from '@/components/ui/FinalizarModal';
@@ -59,6 +60,8 @@ export function OrderDetail() {
   const [withdrawConfirmOpen, setWithdrawConfirmOpen] = useState(false);
   const [isWithdrawing, setIsWithdrawing] = useState(false);
   const [withdrawError, setWithdrawError] = useState('');
+  const [isReactivating, setIsReactivating] = useState(false);
+  const [reactivateError, setReactivateError] = useState('');
   const [finalizarOpen, setFinalizarOpen] = useState(false);
   const [categoryName, setCategoryName] = useState<string | undefined>();
 
@@ -139,6 +142,22 @@ export function OrderDetail() {
       setWithdrawError(err.message || 'No se pudo retirar la propuesta');
     } finally {
       setIsWithdrawing(false);
+    }
+  };
+
+  // RETIRADA -> PENDIENTE directo, sin modal. Después queda "Editar propuesta".
+  const handleReactivate = async () => {
+    if (!miPropuesta) return;
+    setIsReactivating(true);
+    setReactivateError('');
+    try {
+      const updated = await reactivarPropuesta(miPropuesta.id);
+      setMiPropuesta(updated);
+    } catch (err: any) {
+      // En el 409 el backend explica por qué no se puede reactivar.
+      setReactivateError(err.message || 'No se pudo reactivar la propuesta');
+    } finally {
+      setIsReactivating(false);
     }
   };
 
@@ -394,13 +413,19 @@ export function OrderDetail() {
                   Esta oferta fue rechazada — ya no puede modificarse.
                 </p>
               ) : miPropuesta.estado === ProposalStatus.RETIRADA ? (
-                <Button
-                  variant="outline"
-                  className="w-full"
-                  onClick={() => { setEditModalOpen(true); setEditSuccess(false); }}
-                >
-                  Reactivar propuesta
-                </Button>
+                <>
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    isLoading={isReactivating}
+                    onClick={handleReactivate}
+                  >
+                    Reactivar propuesta
+                  </Button>
+                  {reactivateError && (
+                    <p className="text-xs text-red-600 mt-2 text-center">{reactivateError}</p>
+                  )}
+                </>
               ) : withdrawConfirmOpen ? (
                 <div className="space-y-3">
                   <p className="text-sm text-gray-700 text-center font-medium">
