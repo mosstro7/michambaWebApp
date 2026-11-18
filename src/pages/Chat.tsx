@@ -140,7 +140,8 @@ export function Chat() {
     // Alto = viewport - Navbar (4rem). Debajo de md también se resta la TabBar
     // fija (h-20 = 5rem), que si no tapa el input; Layout ya deja ese pb-20 en
     // <main>, así que Navbar + chat + pb-20 suman 100dvh y no queda scroll.
-    <div className="flex flex-col h-[calc(100dvh-9rem)] md:h-[calc(100dvh-4rem)]">
+    // En md y arriba se resta además el md:pt-4 (1rem) de <main>.
+    <div className="flex flex-col h-[calc(100dvh-9rem)] md:h-[calc(100dvh-5rem)]">
       {/* Header */}
       <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100 bg-white flex-shrink-0">
         <button
